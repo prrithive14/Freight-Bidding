@@ -360,6 +360,7 @@ function PostCargoModal({ onClose, onPost }) {
     // Step 1 — Route
     origin: CITIES[0], destination: CITIES[1],
     type: CARGO_TYPES[0], deadline: "", timer: "300", baseRate: "",
+    description: "",
     // Step 2 — Weight & Dimensions
     grossWeight: "", netWeight: "", volume: "", pieces: "",
     length: "", width: "", height: "", packaging: "Palletised (HDPE wrapped)",
@@ -378,12 +379,13 @@ function PostCargoModal({ onClose, onPost }) {
   const toggle = k => () => setForm(f => ({ ...f, [k]: !f[k] }));
 
   const iS = { // input style
-    width: "100%", padding: "9px 12px", borderRadius: 8,
-    background: "#fff", border: "1px solid rgba(0,0,0,0.12)",
-    color: "#1f2937", fontFamily: "Rajdhani", fontWeight: 600, fontSize: 14,
-    outline: "none",
+    width: "100%", padding: "10px 12px", borderRadius: 8,
+    background: "#ffffff", border: "1.5px solid #e5e7eb",
+    color: "#111827", fontFamily: "Rajdhani", fontWeight: 600, fontSize: 14,
+    outline: "none", boxSizing: "border-box", cursor: "text",
+    transition: "border-color 0.15s",
   };
-  const taS = { ...iS, resize: "vertical", minHeight: 72, fontWeight: 400, lineHeight: 1.5 };
+  const taS = { ...iS, resize: "vertical", minHeight: 80, fontWeight: 400, lineHeight: 1.6, cursor: "text" };
 
   const Lbl = ({ children }) => (
     <div style={{ fontFamily: "Rajdhani", fontSize: 11, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 5 }}>{children}</div>
@@ -436,6 +438,7 @@ function PostCargoModal({ onClose, onPost }) {
         loadingType: form.loadingType, unloadingType: form.unloadingType,
         insurance: form.insurance ? `₹${Number(form.insurance).toLocaleString("en-IN")}` : "—",
         specialInstructions: form.specialInstructions || "None",
+        description: form.description || "",
         postedBy: form.postedBy, contactPerson: form.contactPerson, phone: form.phone,
       },
     });
@@ -445,8 +448,8 @@ function PostCargoModal({ onClose, onPost }) {
   const STEPS = ["Route & Pricing", "Weight & Dimensions", "Handling", "Contact & Review"];
 
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 800, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }} onClick={onClose}>
-      <div onClick={e => e.stopPropagation()} style={{ width: 620, maxHeight: "90vh", background: "#fff", borderRadius: 20, boxShadow: "0 32px 80px rgba(0,0,0,0.25)", animation: "slideDown 0.25s ease", display: "flex", flexDirection: "column" }}>
+    <div style={{ position: "fixed", inset: 0, zIndex: 800, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}>
+      <div style={{ width: 640, maxHeight: "92vh", background: "#fff", borderRadius: 20, boxShadow: "0 32px 80px rgba(0,0,0,0.25)", animation: "slideDown 0.25s ease", display: "flex", flexDirection: "column" }}>
 
         {/* Header */}
         <div style={{ padding: "22px 28px 0", flexShrink: 0 }}>
@@ -500,13 +503,21 @@ function PostCargoModal({ onClose, onPost }) {
                 <input type="number" placeholder="e.g. 55000" value={form.baseRate} onChange={setE("baseRate")} style={iS} />
               </F>
               <F label="Bidding Window">
-                <select value={form.timer} onChange={setE("timer")} style={iS}>
+                <select value={form.timer} onChange={setE("timer")} style={{ ...iS, cursor: "pointer" }}>
                   <option value="120">2 minutes</option>
                   <option value="300">5 minutes</option>
                   <option value="600">10 minutes</option>
                   <option value="1800">30 minutes</option>
                   <option value="3600">1 hour</option>
                 </select>
+              </F>
+              <F label="Cargo Description" span>
+                <textarea
+                  placeholder="Describe the cargo in detail — what it is, condition, any relevant info for the carrier. e.g. 'Mixed FMCG goods including dry groceries and household items, factory-sealed cartons, ready for dispatch from Nhava Sheva warehouse.'"
+                  value={form.description}
+                  onChange={setE("description")}
+                  style={{ ...taS, minHeight: 90 }}
+                />
               </F>
             </div>
           )}
@@ -1482,6 +1493,14 @@ export default function App() {
                         {selected.specs.fragile && <Pill color="#f59e0b">🔸 Fragile</Pill>}
                         {selected.specs.tempControlled && <Pill color="#2563eb">❄ Temp Controlled</Pill>}
                       </div>
+
+                      {/* Description */}
+                      {selected.specs.description && (
+                        <div style={{ fontFamily: "Rajdhani", fontSize: 14, color: "#374151", lineHeight: 1.7, padding: "12px 14px", background: "rgba(0,0,0,0.03)", borderRadius: 10, marginBottom: 14 }}>
+                          {selected.specs.description}
+                        </div>
+                      )}
+
                       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
                         {[
                           { label: "Origin", val: selected.origin, icon: "📍" },
