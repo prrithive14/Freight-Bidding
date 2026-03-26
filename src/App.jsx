@@ -353,84 +353,295 @@ const CITIES = Object.keys(CITY_COORDS);
 const CARGO_TYPES = ["General Merchandise","Perishable Goods","Construction Material","Auto Parts","Electronics","Chemicals","Textiles","FMCG","Heavy Equipment"];
 
 function PostCargoModal({ onClose, onPost }) {
-  const [form, setForm] = useState({ origin: CITIES[0], destination: CITIES[1], weight: "", type: CARGO_TYPES[0], baseRate: "", deadline: "", timer: "300" });
-  const set = k => v => setForm(f => ({ ...f, [k]: v }));
+  const [step, setStep] = useState(1);
+  const TOTAL_STEPS = 4;
+
+  const [form, setForm] = useState({
+    // Step 1 — Route
+    origin: CITIES[0], destination: CITIES[1],
+    type: CARGO_TYPES[0], deadline: "", timer: "300", baseRate: "",
+    // Step 2 — Weight & Dimensions
+    grossWeight: "", netWeight: "", volume: "", pieces: "",
+    length: "", width: "", height: "", packaging: "Palletised (HDPE wrapped)",
+    // Step 3 — Handling
+    vehicleType: "32 ft Container / Multi-axle",
+    loadingType: "Dock Loading", unloadingType: "Dock Unloading",
+    hazardous: false, fragile: false, stackable: true, tempControlled: false,
+    tempRange: "",
+    specialInstructions: "",
+    // Step 4 — Contact
+    postedBy: "", contactPerson: "", phone: "", insurance: "",
+  });
+
+  const set = k => val => setForm(f => ({ ...f, [k]: val }));
+  const setE = k => e => setForm(f => ({ ...f, [k]: e.target.value }));
+  const toggle = k => () => setForm(f => ({ ...f, [k]: !f[k] }));
+
+  const iS = { // input style
+    width: "100%", padding: "9px 12px", borderRadius: 8,
+    background: "#fff", border: "1px solid rgba(0,0,0,0.12)",
+    color: "#1f2937", fontFamily: "Rajdhani", fontWeight: 600, fontSize: 14,
+    outline: "none",
+  };
+  const taS = { ...iS, resize: "vertical", minHeight: 72, fontWeight: 400, lineHeight: 1.5 };
+
+  const Lbl = ({ children }) => (
+    <div style={{ fontFamily: "Rajdhani", fontSize: 11, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 5 }}>{children}</div>
+  );
+  const F = ({ label, children, span }) => (
+    <div style={span ? { gridColumn: "span 2" } : {}}>
+      <Lbl>{label}</Lbl>
+      {children}
+    </div>
+  );
+  const Toggle = ({ label, field, icon }) => (
+    <div onClick={toggle(field)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", borderRadius: 8, border: `1px solid ${form[field] ? "rgba(220,38,38,0.3)" : "rgba(0,0,0,0.1)"}`, background: form[field] ? "rgba(220,38,38,0.05)" : "#fff", cursor: "pointer", userSelect: "none" }}>
+      <div style={{ width: 18, height: 18, borderRadius: 4, background: form[field] ? "#dc2626" : "rgba(0,0,0,0.08)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 11, color: "#fff" }}>{form[field] ? "✓" : ""}</div>
+      <span style={{ fontFamily: "Rajdhani", fontWeight: 600, fontSize: 13, color: form[field] ? "#dc2626" : "#6b7280" }}>{icon} {label}</span>
+    </div>
+  );
+
+  const canNext = () => {
+    if (step === 1) return form.origin && form.destination && form.origin !== form.destination && form.deadline && form.baseRate;
+    if (step === 2) return form.grossWeight && form.volume && form.pieces;
+    if (step === 3) return true;
+    if (step === 4) return form.postedBy && form.contactPerson && form.phone;
+    return true;
+  };
 
   const handleSubmit = () => {
-    if (!form.weight || !form.baseRate || !form.deadline) return;
+    if (!canNext()) return;
     onPost({
-      id: `RNT-${String(Math.floor(Math.random()*900)+100)}`,
+      id: `RNT-${String(Math.floor(Math.random() * 900) + 100)}`,
       origin: form.origin, destination: form.destination,
-      weight: `${Number(form.weight).toLocaleString("en-IN")} kg`,
-      type: form.type, distance: `${Math.floor(Math.random()*1200+300)} km`,
-      deadline: form.deadline, baseRate: Number(form.baseRate),
+      weight: `${Number(form.grossWeight).toLocaleString("en-IN")} kg`,
+      type: form.type,
+      distance: `${Math.floor(Math.random() * 1200 + 300)} km`,
+      deadline: form.deadline,
+      baseRate: Number(form.baseRate),
       status: "live", timer: Number(form.timer), bids: [],
+      specs: {
+        grossWeight: `${Number(form.grossWeight).toLocaleString("en-IN")} kg`,
+        netWeight: form.netWeight ? `${Number(form.netWeight).toLocaleString("en-IN")} kg` : "—",
+        volume: form.volume ? `${form.volume} CBM` : "—",
+        length: form.length ? `${form.length} m` : "—",
+        width: form.width ? `${form.width} m` : "—",
+        height: form.height ? `${form.height} m` : "—",
+        pieces: Number(form.pieces) || 0,
+        packaging: form.packaging,
+        vehicleType: form.vehicleType,
+        hazardous: form.hazardous, fragile: form.fragile,
+        stackable: form.stackable, tempControlled: form.tempControlled,
+        tempRange: form.tempRange || null,
+        loadingType: form.loadingType, unloadingType: form.unloadingType,
+        insurance: form.insurance ? `₹${Number(form.insurance).toLocaleString("en-IN")}` : "—",
+        specialInstructions: form.specialInstructions || "None",
+        postedBy: form.postedBy, contactPerson: form.contactPerson, phone: form.phone,
+      },
     });
     onClose();
   };
 
-  const Field = ({ label, children }) => (
-    <div>
-      <div style={{ fontFamily: "Rajdhani", fontSize: 12, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 6 }}>{label}</div>
-      {children}
-    </div>
-  );
-
-  const inputStyle = { width: "100%", padding: "10px 12px", borderRadius: 8, background: "#ffffff", border: "1px solid rgba(0,0,0,0.1)", color: "#374151", fontFamily: "Rajdhani", fontWeight: 600, fontSize: 15 };
+  const STEPS = ["Route & Pricing", "Weight & Dimensions", "Handling", "Contact & Review"];
 
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 800, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.75)", backdropFilter: "blur(4px)" }} onClick={onClose}>
-      <div onClick={e => e.stopPropagation()} style={{
-        width: 520, background: "#f8f8f8", border: "1px solid rgba(0,0,0,0.1)",
-        borderRadius: 20, padding: "28px 28px", animation: "slideDown 0.25s ease",
-        boxShadow: "0 32px 80px rgba(0,0,0,0.7)",
-      }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 22 }}>
-          <div>
-            <div style={{ fontFamily: "Syne", fontWeight: 800, fontSize: 20, color: "#111827" }}>Post New Cargo</div>
-            <div style={{ fontFamily: "JetBrains Mono", fontSize: 11, color: "#d1d5db" }}>Carriers will bid on your load</div>
+    <div style={{ position: "fixed", inset: 0, zIndex: 800, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }} onClick={onClose}>
+      <div onClick={e => e.stopPropagation()} style={{ width: 620, maxHeight: "90vh", background: "#fff", borderRadius: 20, boxShadow: "0 32px 80px rgba(0,0,0,0.25)", animation: "slideDown 0.25s ease", display: "flex", flexDirection: "column" }}>
+
+        {/* Header */}
+        <div style={{ padding: "22px 28px 0", flexShrink: 0 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
+            <div>
+              <div style={{ fontFamily: "Syne", fontWeight: 800, fontSize: 20, color: "#111827" }}>Post New Cargo</div>
+              <div style={{ fontFamily: "Rajdhani", fontSize: 13, color: "#9ca3af", marginTop: 2 }}>Step {step} of {TOTAL_STEPS} — {STEPS[step - 1]}</div>
+            </div>
+            <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "#9ca3af", fontSize: 22, lineHeight: 1 }}>×</button>
           </div>
-          <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "#9ca3af", fontSize: 22 }}>×</button>
+
+          {/* Step progress */}
+          <div style={{ display: "flex", gap: 6, marginBottom: 22 }}>
+            {STEPS.map((s, i) => (
+              <div key={s} style={{ flex: 1 }}>
+                <div style={{ height: 3, borderRadius: 2, background: i + 1 <= step ? "#dc2626" : "rgba(0,0,0,0.08)", transition: "background 0.3s" }} />
+                <div style={{ fontFamily: "Rajdhani", fontSize: 10, color: i + 1 <= step ? "#dc2626" : "#d1d5db", marginTop: 4, textTransform: "uppercase", letterSpacing: "0.06em" }}>{s}</div>
+              </div>
+            ))}
+          </div>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-          <Field label="Origin City">
-            <select value={form.origin} onChange={e => set("origin")(e.target.value)} style={inputStyle}>
-              {CITIES.map(c => <option key={c}>{c}</option>)}
-            </select>
-          </Field>
-          <Field label="Destination City">
-            <select value={form.destination} onChange={e => set("destination")(e.target.value)} style={inputStyle}>
-              {CITIES.map(c => <option key={c}>{c}</option>)}
-            </select>
-          </Field>
-          <Field label="Weight (kg)">
-            <input type="number" placeholder="e.g. 12000" value={form.weight} onChange={e => set("weight")(e.target.value)} style={inputStyle} />
-          </Field>
-          <Field label="Cargo Type">
-            <select value={form.type} onChange={e => set("type")(e.target.value)} style={inputStyle}>
-              {CARGO_TYPES.map(t => <option key={t}>{t}</option>)}
-            </select>
-          </Field>
-          <Field label="Base Rate (₹)">
-            <input type="number" placeholder="e.g. 55000" value={form.baseRate} onChange={e => set("baseRate")(e.target.value)} style={inputStyle} />
-          </Field>
-          <Field label="Delivery Deadline">
-            <input type="date" value={form.deadline} onChange={e => set("deadline")(e.target.value)} style={inputStyle} />
-          </Field>
-          <Field label="Bidding Window">
-            <select value={form.timer} onChange={e => set("timer")(e.target.value)} style={inputStyle}>
-              <option value="120">2 minutes</option>
-              <option value="300">5 minutes</option>
-              <option value="600">10 minutes</option>
-              <option value="1800">30 minutes</option>
-            </select>
-          </Field>
+        {/* Scrollable body */}
+        <div style={{ flex: 1, overflowY: "auto", padding: "0 28px" }}>
+
+          {/* ── STEP 1: Route & Pricing ── */}
+          {step === 1 && (
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, paddingBottom: 8 }}>
+              <F label="Origin City">
+                <select value={form.origin} onChange={setE("origin")} style={iS}>
+                  {CITIES.map(c => <option key={c}>{c}</option>)}
+                </select>
+              </F>
+              <F label="Destination City">
+                <select value={form.destination} onChange={setE("destination")} style={iS}>
+                  {CITIES.map(c => <option key={c}>{c}</option>)}
+                </select>
+              </F>
+              {form.origin === form.destination && (
+                <div style={{ gridColumn: "span 2", fontFamily: "Rajdhani", fontSize: 13, color: "#dc2626" }}>⚠ Origin and destination cannot be the same</div>
+              )}
+              <F label="Cargo Type">
+                <select value={form.type} onChange={setE("type")} style={iS}>
+                  {CARGO_TYPES.map(t => <option key={t}>{t}</option>)}
+                </select>
+              </F>
+              <F label="Delivery Deadline">
+                <input type="date" value={form.deadline} onChange={setE("deadline")} style={iS} />
+              </F>
+              <F label="Base Rate (₹)" >
+                <input type="number" placeholder="e.g. 55000" value={form.baseRate} onChange={setE("baseRate")} style={iS} />
+              </F>
+              <F label="Bidding Window">
+                <select value={form.timer} onChange={setE("timer")} style={iS}>
+                  <option value="120">2 minutes</option>
+                  <option value="300">5 minutes</option>
+                  <option value="600">10 minutes</option>
+                  <option value="1800">30 minutes</option>
+                  <option value="3600">1 hour</option>
+                </select>
+              </F>
+            </div>
+          )}
+
+          {/* ── STEP 2: Weight & Dimensions ── */}
+          {step === 2 && (
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, paddingBottom: 8 }}>
+              <F label="Gross Weight (kg)">
+                <input type="number" placeholder="e.g. 18500" value={form.grossWeight} onChange={setE("grossWeight")} style={iS} />
+              </F>
+              <F label="Net Weight (kg)">
+                <input type="number" placeholder="e.g. 17200" value={form.netWeight} onChange={setE("netWeight")} style={iS} />
+              </F>
+              <F label="Volume (CBM)">
+                <input type="number" placeholder="e.g. 62" value={form.volume} onChange={setE("volume")} style={iS} />
+              </F>
+              <F label="No. of Pieces / Units">
+                <input type="number" placeholder="e.g. 240" value={form.pieces} onChange={setE("pieces")} style={iS} />
+              </F>
+              <F label="Length (m)">
+                <input type="number" step="0.1" placeholder="e.g. 12.2" value={form.length} onChange={setE("length")} style={iS} />
+              </F>
+              <F label="Width (m)">
+                <input type="number" step="0.1" placeholder="e.g. 2.4" value={form.width} onChange={setE("width")} style={iS} />
+              </F>
+              <F label="Height (m)">
+                <input type="number" step="0.1" placeholder="e.g. 2.6" value={form.height} onChange={setE("height")} style={iS} />
+              </F>
+              <F label="Packaging Type">
+                <select value={form.packaging} onChange={setE("packaging")} style={iS}>
+                  {["Palletised (HDPE wrapped)","Insulated Crates","Loose / Break Bulk","Drums","Bags / Sacks","Boxes / Cartons","IBC Tanks","Customised Crating"].map(p => <option key={p}>{p}</option>)}
+                </select>
+              </F>
+            </div>
+          )}
+
+          {/* ── STEP 3: Handling & Requirements ── */}
+          {step === 3 && (
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, paddingBottom: 8 }}>
+              <F label="Vehicle Type Required" span>
+                <select value={form.vehicleType} onChange={setE("vehicleType")} style={iS}>
+                  {["32 ft Container / Multi-axle","20 ft Reefer Container","Flatbed Trailer / Open Body","Mini Truck (1-2T)","LCV (3-5T)","HCV (10-15T)","Tanker","Tipper","Any"].map(v => <option key={v}>{v}</option>)}
+                </select>
+              </F>
+              <F label="Loading Method">
+                <select value={form.loadingType} onChange={setE("loadingType")} style={iS}>
+                  {["Dock Loading","Ground Level Loading","Crane Loading","Forklift Loading","Manual Loading"].map(v => <option key={v}>{v}</option>)}
+                </select>
+              </F>
+              <F label="Unloading Method">
+                <select value={form.unloadingType} onChange={setE("unloadingType")} style={iS}>
+                  {["Dock Unloading","Ground Level Unloading","Crane Unloading","Cold Storage Dock","Forklift Unloading","Manual Unloading"].map(v => <option key={v}>{v}</option>)}
+                </select>
+              </F>
+
+              {/* Flags */}
+              <div style={{ gridColumn: "span 2" }}>
+                <Lbl>Cargo Flags</Lbl>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                  <Toggle label="Hazardous" field="hazardous" icon="⚠" />
+                  <Toggle label="Fragile" field="fragile" icon="🔸" />
+                  <Toggle label="Stackable" field="stackable" icon="📚" />
+                  <Toggle label="Temperature Controlled" field="tempControlled" icon="❄" />
+                </div>
+              </div>
+
+              {form.tempControlled && (
+                <F label="Temperature Range" span>
+                  <input placeholder="e.g. 2°C – 8°C (Refrigerated)" value={form.tempRange} onChange={setE("tempRange")} style={iS} />
+                </F>
+              )}
+
+              <F label="Special Instructions / Remarks" span>
+                <textarea placeholder="e.g. Secure strapping required. No stacking above 2 layers. Escort vehicle mandatory on NH-48." value={form.specialInstructions} onChange={setE("specialInstructions")} style={taS} />
+              </F>
+            </div>
+          )}
+
+          {/* ── STEP 4: Contact & Review ── */}
+          {step === 4 && (
+            <div style={{ paddingBottom: 8 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 16 }}>
+                <F label="Company / Organisation" span>
+                  <input placeholder="e.g. Ramnath Industries Pvt. Ltd." value={form.postedBy} onChange={setE("postedBy")} style={iS} />
+                </F>
+                <F label="Contact Person">
+                  <input placeholder="e.g. Ankit Sharma" value={form.contactPerson} onChange={setE("contactPerson")} style={iS} />
+                </F>
+                <F label="Phone Number">
+                  <input placeholder="+91 98100 23456" value={form.phone} onChange={setE("phone")} style={iS} />
+                </F>
+                <F label="Cargo Insurance Value (₹)" span>
+                  <input type="number" placeholder="e.g. 1850000" value={form.insurance} onChange={setE("insurance")} style={iS} />
+                </F>
+              </div>
+
+              {/* Summary */}
+              <div style={{ background: "#fdf2f2", border: "1px solid rgba(220,38,38,0.2)", borderRadius: 12, padding: "16px 18px" }}>
+                <div style={{ fontFamily: "Syne", fontWeight: 700, fontSize: 14, color: "#111827", marginBottom: 12 }}>Review before posting</div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                  {[
+                    { label: "Route", val: `${form.origin.split(",")[0]} → ${form.destination.split(",")[0]}` },
+                    { label: "Cargo Type", val: form.type },
+                    { label: "Gross Weight", val: form.grossWeight ? `${Number(form.grossWeight).toLocaleString("en-IN")} kg` : "—" },
+                    { label: "Volume", val: form.volume ? `${form.volume} CBM` : "—" },
+                    { label: "Pieces", val: form.pieces || "—" },
+                    { label: "Vehicle", val: form.vehicleType },
+                    { label: "Base Rate", val: form.baseRate ? `₹${Number(form.baseRate).toLocaleString("en-IN")}` : "—" },
+                    { label: "Deadline", val: form.deadline || "—" },
+                    { label: "Bidding Window", val: { "120": "2 min", "300": "5 min", "600": "10 min", "1800": "30 min", "3600": "1 hr" }[form.timer] },
+                    { label: "Flags", val: [form.hazardous && "Hazardous", form.fragile && "Fragile", form.stackable && "Stackable", form.tempControlled && "Temp Controlled"].filter(Boolean).join(", ") || "None" },
+                  ].map(({ label, val }) => (
+                    <div key={label} style={{ display: "flex", justifyContent: "space-between", padding: "5px 0", borderBottom: "1px solid rgba(0,0,0,0.05)" }}>
+                      <span style={{ fontFamily: "Rajdhani", fontSize: 12, color: "#9ca3af" }}>{label}</span>
+                      <span style={{ fontFamily: "Rajdhani", fontWeight: 600, fontSize: 12, color: "#1f2937", textAlign: "right", maxWidth: "55%" }}>{val}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
-        <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
-          <button onClick={onClose} style={{ flex: 1, padding: "11px", borderRadius: 10, border: "1px solid rgba(0,0,0,0.09)", background: "transparent", color: "#9ca3af", fontFamily: "Rajdhani", fontWeight: 700, fontSize: 15, cursor: "pointer" }}>Cancel</button>
-          <button onClick={handleSubmit} style={{ flex: 2, padding: "11px", borderRadius: 10, border: "none", cursor: "pointer", background: "linear-gradient(135deg, #dc2626, #b91c1c)", color: "#ffffff", fontFamily: "Syne", fontWeight: 800, fontSize: 15 }}>Post Cargo →</button>
+        {/* Footer */}
+        <div style={{ padding: "16px 28px 22px", flexShrink: 0, borderTop: "1px solid rgba(0,0,0,0.07)", display: "flex", gap: 10, marginTop: 8 }}>
+          <button onClick={step === 1 ? onClose : () => setStep(s => s - 1)} style={{ flex: 1, padding: "11px", borderRadius: 10, border: "1px solid rgba(0,0,0,0.1)", background: "transparent", color: "#6b7280", fontFamily: "Rajdhani", fontWeight: 700, fontSize: 15, cursor: "pointer" }}>
+            {step === 1 ? "Cancel" : "← Back"}
+          </button>
+          <button
+            disabled={!canNext()}
+            onClick={step === TOTAL_STEPS ? handleSubmit : () => setStep(s => s + 1)}
+            style={{ flex: 2, padding: "11px", borderRadius: 10, border: "none", cursor: canNext() ? "pointer" : "not-allowed", background: canNext() ? "linear-gradient(135deg, #dc2626, #b91c1c)" : "rgba(0,0,0,0.1)", color: canNext() ? "#fff" : "#9ca3af", fontFamily: "Syne", fontWeight: 800, fontSize: 15, transition: "all 0.2s" }}
+          >
+            {step === TOTAL_STEPS ? "Post Cargo →" : `Next: ${STEPS[step]} →`}
+          </button>
         </div>
       </div>
     </div>
