@@ -382,6 +382,18 @@ function PostCargoModal({ onClose, onPost }) {
   const TOTAL_STEPS = 4;
   const STEPS = ["Route & Pricing", "Weight & Dimensions", "Handling", "Contact & Review"];
 
+  // saved holds all typed values that persist across step changes
+  const saved = useRef({
+    origin: CITIES[0], destination: CITIES[1], type: CARGO_TYPES[0],
+    deadline: "", timer: "300", baseRate: "", description: "",
+    grossWeight: "", netWeight: "", volume: "", pieces: "",
+    length: "", width: "", height: "", packaging: "Palletised (HDPE wrapped)",
+    vehicleType: "32 ft Container / Multi-axle",
+    loadingType: "Dock Loading", unloadingType: "Dock Unloading",
+    tempRange: "", specialInstructions: "",
+    postedBy: "", contactPerson: "", phone: "", insurance: "",
+  });
+
   const r = {
     origin: useRef(), destination: useRef(), type: useRef(),
     deadline: useRef(), timer: useRef(), baseRate: useRef(), description: useRef(),
@@ -392,51 +404,70 @@ function PostCargoModal({ onClose, onPost }) {
     postedBy: useRef(), contactPerson: useRef(), phone: useRef(), insurance: useRef(),
   };
 
-  const v = k => r[k]?.current?.value || "";
+  // Read current DOM values into saved before unmounting a step
+  const snapshot = () => {
+    Object.keys(r).forEach(k => {
+      if (r[k]?.current) saved.current[k] = r[k].current.value;
+    });
+  };
+
+  const v = k => saved.current[k] || "";
 
   const canNext = () => {
-    if (step === 1) return v("origin") && v("destination") && v("origin") !== v("destination") && v("deadline") && v("baseRate");
-    if (step === 2) return v("grossWeight") && v("volume") && v("pieces");
+    // Read live DOM values for the current step
+    const live = k => r[k]?.current?.value || saved.current[k] || "";
+    if (step === 1) return live("origin") && live("destination") && live("origin") !== live("destination") && live("deadline") && live("baseRate");
+    if (step === 2) return live("grossWeight") && live("volume") && live("pieces");
     if (step === 3) return true;
-    if (step === 4) return v("postedBy") && v("contactPerson") && v("phone");
+    if (step === 4) return live("postedBy") && live("contactPerson") && live("phone");
     return true;
   };
 
   const goNext = () => {
+    snapshot(); // save current step values before unmounting
     if (!canNext()) { alert("Please fill in the required fields (marked *) before continuing."); return; }
     setStep(s => s + 1);
   };
 
+  const goBack = () => {
+    snapshot();
+    setStep(s => s - 1);
+  };
+
   const handleSubmit = () => {
-    if (!canNext()) { alert("Please fill in the required fields."); return; }
-    const gw = Number(v("grossWeight"));
+    snapshot();
+    const live = k => saved.current[k] || "";
+    if (!live("postedBy") || !live("contactPerson") || !live("phone")) {
+      alert("Please fill in the required contact fields."); return;
+    }
+    const gw = Number(live("grossWeight"));
     onPost({
       id: `RNT-${String(Math.floor(Math.random() * 900) + 100)}`,
-      origin: v("origin"), destination: v("destination"),
+      origin: live("origin"), destination: live("destination"),
       weight: `${gw.toLocaleString("en-IN")} kg`,
-      type: v("type"),
+      type: live("type"),
       distance: `${Math.floor(Math.random() * 1200 + 300)} km`,
-      deadline: v("deadline"),
-      baseRate: Number(v("baseRate")),
-      status: "live", timer: Number(v("timer")) || 300, bids: [],
+      deadline: live("deadline"),
+      baseRate: Number(live("baseRate")),
+      status: "live", timer: Number(live("timer")) || 300, bids: [],
       specs: {
         grossWeight: `${gw.toLocaleString("en-IN")} kg`,
-        netWeight: v("netWeight") ? `${Number(v("netWeight")).toLocaleString("en-IN")} kg` : "—",
-        volume: v("volume") ? `${v("volume")} CBM` : "—",
-        length: v("length") ? `${v("length")} m` : "—",
-        width: v("width") ? `${v("width")} m` : "—",
-        height: v("height") ? `${v("height")} m` : "—",
-        pieces: Number(v("pieces")) || 0,
-        packaging: v("packaging"),
-        vehicleType: v("vehicleType"),
+        netWeight: live("netWeight") ? `${Number(live("netWeight")).toLocaleString("en-IN")} kg` : "—",
+        volume: live("volume") ? `${live("volume")} CBM` : "—",
+        length: live("length") ? `${live("length")} m` : "—",
+        width: live("width") ? `${live("width")} m` : "—",
+        height: live("height") ? `${live("height")} m` : "—",
+        pieces: Number(live("pieces")) || 0,
+        packaging: live("packaging"),
+        vehicleType: live("vehicleType"),
         hazardous: flags.hazardous, fragile: flags.fragile,
         stackable: flags.stackable, tempControlled: flags.tempControlled,
-        tempRange: flags.tempControlled ? v("tempRange") : null,
-        loadingType: v("loadingType"), unloadingType: v("unloadingType"),
-        insurance: v("insurance") ? `₹${Number(v("insurance")).toLocaleString("en-IN")}` : "—",
-        specialInstructions: v("specialInstructions") || "None",
-        description: v("description") || "",
-        postedBy: v("postedBy"), contactPerson: v("contactPerson"), phone: v("phone"),
+        tempRange: flags.tempControlled ? live("tempRange") : null,
+        loadingType: live("loadingType"), unloadingType: live("unloadingType"),
+        insurance: live("insurance") ? `₹${Number(live("insurance")).toLocaleString("en-IN")}` : "—",
+        specialInstructions: live("specialInstructions") || "None",
+        description: live("description") || "",
+        postedBy: live("postedBy"), contactPerson: live("contactPerson"), phone: live("phone"),
       },
     });
     onClose();
@@ -470,28 +501,28 @@ function PostCargoModal({ onClose, onPost }) {
           {step === 1 && (
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
               <ModalField label="Origin City">
-                <select ref={r.origin} defaultValue={CITIES[0]} style={IS}>
+                <select ref={r.origin} defaultValue={saved.current.origin} style={IS}>
                   {CITIES.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </ModalField>
               <ModalField label="Destination City">
-                <select ref={r.destination} defaultValue={CITIES[1]} style={IS}>
+                <select ref={r.destination} defaultValue={saved.current.destination} style={IS}>
                   {CITIES.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </ModalField>
               <ModalField label="Cargo Type">
-                <select ref={r.type} defaultValue={CARGO_TYPES[0]} style={IS}>
+                <select ref={r.type} defaultValue={saved.current.type} style={IS}>
                   {CARGO_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                 </select>
               </ModalField>
               <ModalField label="Delivery Deadline *">
-                <input ref={r.deadline} type="date" style={IS} />
+                <input ref={r.deadline} type="date" defaultValue={saved.current.deadline} style={IS} />
               </ModalField>
               <ModalField label="Base Rate (₹) *">
-                <input ref={r.baseRate} type="number" placeholder="e.g. 55000" style={IS} />
+                <input ref={r.baseRate} type="number" defaultValue={saved.current.baseRate} placeholder="e.g. 55000" style={IS} />
               </ModalField>
               <ModalField label="Bidding Window">
-                <select ref={r.timer} defaultValue="300" style={IS}>
+                <select ref={r.timer} defaultValue={saved.current.timer} style={IS}>
                   <option value="120">2 minutes</option>
                   <option value="300">5 minutes</option>
                   <option value="600">10 minutes</option>
@@ -500,7 +531,7 @@ function PostCargoModal({ onClose, onPost }) {
                 </select>
               </ModalField>
               <ModalField label="Cargo Description" span>
-                <textarea ref={r.description} placeholder="Describe the cargo in detail — what it is, condition, any relevant info for the carrier..." style={TA} />
+                <textarea ref={r.description} defaultValue={saved.current.description} placeholder="Describe the cargo in detail — what it is, condition, any relevant info for the carrier..." style={TA} />
               </ModalField>
             </div>
           )}
@@ -508,28 +539,28 @@ function PostCargoModal({ onClose, onPost }) {
           {step === 2 && (
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
               <ModalField label="Gross Weight (kg) *">
-                <input ref={r.grossWeight} type="number" placeholder="e.g. 18500" style={IS} />
+                <input ref={r.grossWeight} type="number" defaultValue={saved.current.grossWeight} placeholder="e.g. 18500" style={IS} />
               </ModalField>
               <ModalField label="Net Weight (kg)">
-                <input ref={r.netWeight} type="number" placeholder="e.g. 17200" style={IS} />
+                <input ref={r.netWeight} type="number" defaultValue={saved.current.netWeight} placeholder="e.g. 17200" style={IS} />
               </ModalField>
               <ModalField label="Volume (CBM) *">
-                <input ref={r.volume} type="number" placeholder="e.g. 62" style={IS} />
+                <input ref={r.volume} type="number" defaultValue={saved.current.volume} placeholder="e.g. 62" style={IS} />
               </ModalField>
               <ModalField label="No. of Pieces *">
-                <input ref={r.pieces} type="number" placeholder="e.g. 240" style={IS} />
+                <input ref={r.pieces} type="number" defaultValue={saved.current.pieces} placeholder="e.g. 240" style={IS} />
               </ModalField>
               <ModalField label="Length (m)">
-                <input ref={r.length} type="number" step="0.1" placeholder="e.g. 12.2" style={IS} />
+                <input ref={r.length} type="number" step="0.1" defaultValue={saved.current.length} placeholder="e.g. 12.2" style={IS} />
               </ModalField>
               <ModalField label="Width (m)">
-                <input ref={r.width} type="number" step="0.1" placeholder="e.g. 2.4" style={IS} />
+                <input ref={r.width} type="number" step="0.1" defaultValue={saved.current.width} placeholder="e.g. 2.4" style={IS} />
               </ModalField>
               <ModalField label="Height (m)">
-                <input ref={r.height} type="number" step="0.1" placeholder="e.g. 2.6" style={IS} />
+                <input ref={r.height} type="number" step="0.1" defaultValue={saved.current.height} placeholder="e.g. 2.6" style={IS} />
               </ModalField>
               <ModalField label="Packaging Type">
-                <select ref={r.packaging} defaultValue="Palletised (HDPE wrapped)" style={IS}>
+                <select ref={r.packaging} defaultValue={saved.current.packaging} style={IS}>
                   {["Palletised (HDPE wrapped)","Insulated Crates","Loose / Break Bulk","Drums","Bags / Sacks","Boxes / Cartons","IBC Tanks","Customised Crating"].map(p => <option key={p} value={p}>{p}</option>)}
                 </select>
               </ModalField>
@@ -539,17 +570,17 @@ function PostCargoModal({ onClose, onPost }) {
           {step === 3 && (
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
               <ModalField label="Vehicle Type Required" span>
-                <select ref={r.vehicleType} defaultValue="32 ft Container / Multi-axle" style={IS}>
+                <select ref={r.vehicleType} defaultValue={saved.current.vehicleType} style={IS}>
                   {["32 ft Container / Multi-axle","20 ft Reefer Container","Flatbed Trailer / Open Body","Mini Truck (1-2T)","LCV (3-5T)","HCV (10-15T)","Tanker","Tipper","Any"].map(vt => <option key={vt} value={vt}>{vt}</option>)}
                 </select>
               </ModalField>
               <ModalField label="Loading Method">
-                <select ref={r.loadingType} defaultValue="Dock Loading" style={IS}>
+                <select ref={r.loadingType} defaultValue={saved.current.loadingType} style={IS}>
                   {["Dock Loading","Ground Level Loading","Crane Loading","Forklift Loading","Manual Loading"].map(vt => <option key={vt} value={vt}>{vt}</option>)}
                 </select>
               </ModalField>
               <ModalField label="Unloading Method">
-                <select ref={r.unloadingType} defaultValue="Dock Unloading" style={IS}>
+                <select ref={r.unloadingType} defaultValue={saved.current.unloadingType} style={IS}>
                   {["Dock Unloading","Ground Level Unloading","Crane Unloading","Cold Storage Dock","Forklift Unloading","Manual Unloading"].map(vt => <option key={vt} value={vt}>{vt}</option>)}
                 </select>
               </ModalField>
@@ -574,11 +605,11 @@ function PostCargoModal({ onClose, onPost }) {
               </div>
               {showTempRange && (
                 <ModalField label="Temperature Range" span>
-                  <input ref={r.tempRange} placeholder="e.g. 2°C – 8°C (Refrigerated)" style={IS} />
+                  <input ref={r.tempRange} defaultValue={saved.current.tempRange} placeholder="e.g. 2°C – 8°C (Refrigerated)" style={IS} />
                 </ModalField>
               )}
               <ModalField label="Special Instructions" span>
-                <textarea ref={r.specialInstructions} placeholder="e.g. Secure strapping required. No stacking above 2 layers. Escort vehicle mandatory on NH-48." style={TA} />
+                <textarea ref={r.specialInstructions} defaultValue={saved.current.specialInstructions} placeholder="e.g. Secure strapping required. No stacking above 2 layers. Escort vehicle mandatory on NH-48." style={TA} />
               </ModalField>
             </div>
           )}
@@ -587,16 +618,16 @@ function PostCargoModal({ onClose, onPost }) {
             <div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 16 }}>
                 <ModalField label="Company / Organisation *" span>
-                  <input ref={r.postedBy} placeholder="e.g. Ramnath Industries Pvt. Ltd." style={IS} />
+                  <input ref={r.postedBy} defaultValue={saved.current.postedBy} placeholder="e.g. Ramnath Industries Pvt. Ltd." style={IS} />
                 </ModalField>
                 <ModalField label="Contact Person *">
-                  <input ref={r.contactPerson} placeholder="e.g. Ankit Sharma" style={IS} />
+                  <input ref={r.contactPerson} defaultValue={saved.current.contactPerson} placeholder="e.g. Ankit Sharma" style={IS} />
                 </ModalField>
                 <ModalField label="Phone Number *">
-                  <input ref={r.phone} placeholder="+91 98100 23456" style={IS} />
+                  <input ref={r.phone} defaultValue={saved.current.phone} placeholder="+91 98100 23456" style={IS} />
                 </ModalField>
                 <ModalField label="Cargo Insurance Value (₹)">
-                  <input ref={r.insurance} type="number" placeholder="e.g. 1850000" style={IS} />
+                  <input ref={r.insurance} type="number" defaultValue={saved.current.insurance} placeholder="e.g. 1850000" style={IS} />
                 </ModalField>
               </div>
               <div style={{ background: "#fdf2f2", border: "1px solid rgba(220,38,38,0.15)", borderRadius: 12, padding: "16px 18px" }}>
@@ -608,7 +639,7 @@ function PostCargoModal({ onClose, onPost }) {
         </div>
 
         <div style={{ padding: "14px 28px 20px", flexShrink: 0, borderTop: "1px solid rgba(0,0,0,0.07)", display: "flex", gap: 10 }}>
-          <button onClick={step === 1 ? onClose : () => setStep(s => s - 1)} style={{ flex: 1, padding: "11px", borderRadius: 10, border: "1px solid rgba(0,0,0,0.1)", background: "transparent", color: "#6b7280", fontFamily: "Rajdhani", fontWeight: 700, fontSize: 15, cursor: "pointer" }}>
+          <button onClick={step === 1 ? onClose : goBack} style={{ flex: 1, padding: "11px", borderRadius: 10, border: "1px solid rgba(0,0,0,0.1)", background: "transparent", color: "#6b7280", fontFamily: "Rajdhani", fontWeight: 700, fontSize: 15, cursor: "pointer" }}>
             {step === 1 ? "Cancel" : "← Back"}
           </button>
           <button onClick={step === TOTAL_STEPS ? handleSubmit : goNext} style={{ flex: 2, padding: "11px", borderRadius: 10, border: "none", cursor: "pointer", background: "linear-gradient(135deg, #dc2626, #b91c1c)", color: "#fff", fontFamily: "Syne", fontWeight: 800, fontSize: 15 }}>
