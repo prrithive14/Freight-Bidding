@@ -42,6 +42,17 @@ const INITIAL_CARGOS = [
     id: "RNT-001", origin: "Mumbai, MH", destination: "Delhi, DL",
     weight: "18,500 kg", type: "General Merchandise", distance: "1,414 km",
     deadline: "2026-03-28", baseRate: 85000, status: "live", timer: 180,
+    specs: {
+      grossWeight: "18,500 kg", netWeight: "17,200 kg", volume: "62 CBM",
+      length: "12.2 m", width: "2.4 m", height: "2.6 m",
+      pieces: 240, packaging: "Palletised (HDPE wrapped)",
+      vehicleType: "32 ft Container / Multi-axle",
+      hazardous: false, fragile: false, stackable: true, tempControlled: false,
+      loadingType: "Dock Loading", unloadingType: "Dock Unloading",
+      insurance: "₹18,50,000 (Shipper's Risk)",
+      specialInstructions: "Secure strapping required. No stacking above 2 layers.",
+      postedBy: "Ramnath Industries Pvt. Ltd.", contactPerson: "Ankit Sharma", phone: "+91 98100 23456",
+    },
     bids: [
       { carrier: "Shri Logistics",    amount: 79000, time: "10:42 AM", ts: Date.now() - 3600000 },
       { carrier: "FastMove India",    amount: 81500, time: "10:45 AM", ts: Date.now() - 3200000 },
@@ -52,6 +63,18 @@ const INITIAL_CARGOS = [
     id: "RNT-002", origin: "Chennai, TN", destination: "Hyderabad, TS",
     weight: "6,200 kg", type: "Perishable Goods", distance: "627 km",
     deadline: "2026-03-27", baseRate: 32000, status: "live", timer: 420,
+    specs: {
+      grossWeight: "6,200 kg", netWeight: "5,800 kg", volume: "18 CBM",
+      length: "4.8 m", width: "2.1 m", height: "1.8 m",
+      pieces: 90, packaging: "Insulated Crates",
+      vehicleType: "20 ft Reefer Container",
+      hazardous: false, fragile: true, stackable: false, tempControlled: true,
+      tempRange: "2°C – 8°C (Refrigerated)",
+      loadingType: "Ground Level Loading", unloadingType: "Cold Storage Dock",
+      insurance: "₹6,20,000 (All Risk)",
+      specialInstructions: "Temperature must be maintained at 2–8°C throughout transit. No delays exceeding 2 hours.",
+      postedBy: "FreshCo Exports Ltd.", contactPerson: "Priya Nair", phone: "+91 90001 11223",
+    },
     bids: [
       { carrier: "CoolChain Transport", amount: 29500, time: "11:01 AM", ts: Date.now() - 2700000 },
       { carrier: "Deccan Speedways",    amount: 28800, time: "11:15 AM", ts: Date.now() - 1200000 },
@@ -61,6 +84,17 @@ const INITIAL_CARGOS = [
     id: "RNT-003", origin: "Kolkata, WB", destination: "Patna, BR",
     weight: "11,000 kg", type: "Construction Material", distance: "531 km",
     deadline: "2026-03-29", baseRate: 44000, status: "closed", timer: 0,
+    specs: {
+      grossWeight: "11,000 kg", netWeight: "11,000 kg", volume: "22 CBM",
+      length: "6.0 m", width: "2.4 m", height: "1.5 m",
+      pieces: 1, packaging: "Loose / Break Bulk",
+      vehicleType: "Flatbed Trailer / Open Body",
+      hazardous: false, fragile: false, stackable: false, tempControlled: false,
+      loadingType: "Crane Loading", unloadingType: "Crane Unloading",
+      insurance: "₹11,00,000 (Shipper's Risk)",
+      specialInstructions: "Heavy lift equipment required at both ends. Escort vehicle mandatory on NH-19.",
+      postedBy: "BuildRight Infra Corp.", contactPerson: "Suresh Biswas", phone: "+91 97330 88771",
+    },
     bids: [
       { carrier: "Iron Road Freight",  amount: 38000, time: "09:15 AM", ts: Date.now() - 7200000 },
       { carrier: "Bharat Carriers",    amount: 36500, time: "09:22 AM", ts: Date.now() - 6900000 },
@@ -698,18 +732,24 @@ function ShipmentView({ cargo, onBack }) {
 
 // ─── BID ROW ─────────────────────────────────────────────────────────────────
 
-function BidRow({ bid, isWinner, rank, onViewProfile, onAward, canAward }) {
+function BidRow({ bid, isWinner, rank, onViewProfile, onAward, canAward, cargoId, cargoType }) {
   const p = CARRIER_PROFILES[bid.carrier];
   return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "11px 14px", background: isWinner ? "rgba(220,38,38,0.08)" : "rgba(0,0,0,0.03)", borderRadius: 8, border: isWinner ? "1px solid rgba(220,38,38,0.35)" : "1px solid rgba(0,0,0,0.05)", marginBottom: 6 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <div style={{ width: 28, height: 28, borderRadius: 8, background: isWinner ? "rgba(220,38,38,0.2)" : "rgba(0,0,0,0.05)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "JetBrains Mono", fontWeight: 700, fontSize: 12, color: isWinner ? "#dc2626" : "#d1d5db" }}>#{rank}</div>
         <div>
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
             <span style={{ fontFamily: "Rajdhani", fontWeight: 700, color: isWinner ? "#dc2626" : "#374151", fontSize: 14 }}>{bid.carrier}</span>
             {p?.badge && <Pill color={p.badge === "Top Rated" ? "#dc2626" : p.badge === "Premium" ? "#a78bfa" : "#16a34a"}>{p.badge}</Pill>}
           </div>
-          <div style={{ fontFamily: "JetBrains Mono", fontSize: 10, color: "#9ca3af" }}>★ {p?.rating || "—"} · {p?.onTime || "—"}% on-time · {bid.time}</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ fontFamily: "JetBrains Mono", fontSize: 10, color: "#dc2626", fontWeight: 700 }}>{cargoId}</span>
+            <span style={{ color: "#e5e7eb" }}>·</span>
+            <span style={{ fontFamily: "Rajdhani", fontWeight: 600, fontSize: 12, color: "#374151" }}>{cargoType}</span>
+            <span style={{ color: "#e5e7eb" }}>·</span>
+            <span style={{ fontFamily: "JetBrains Mono", fontSize: 10, color: "#9ca3af" }}>★ {p?.rating || "—"} · {p?.onTime || "—"}% on-time · {bid.time}</span>
+          </div>
         </div>
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -1044,7 +1084,9 @@ export default function App() {
 
                 {/* Tab bar */}
                 <div style={{ display: "flex", gap: 4, marginBottom: 16 }}>
-                  {[["bids","📋 Bids"],["chart","📈 Bid Chart"],["map","🗺 Route Map"]].map(([t, label]) => (
+                  {[["bids", view === "shipper" ? "📋 All Bids" : "📋 Market"],["chart","📈 Bid Chart"],["cargo","📦 Cargo Details"],["map","🗺 Route Map"]]
+                    .filter(([t]) => !(t === "chart" && view === "carrier"))
+                    .map(([t, label]) => (
                     <button key={t} onClick={() => setActiveTab(t)} style={{
                       padding: "7px 16px", borderRadius: 8, border: "none", cursor: "pointer",
                       fontFamily: "Rajdhani", fontWeight: 700, fontSize: 14,
@@ -1056,13 +1098,36 @@ export default function App() {
                 </div>
 
                 {/* Tab content */}
-                {activeTab === "bids" && (
+                {activeTab === "bids" && view === "shipper" && (
                   <div style={{ background: "rgba(0,0,0,0.03)", border: "1px solid rgba(0,0,0,0.07)", borderRadius: 14, padding: "18px 18px", marginBottom: 16 }}>
+                    {/* Cargo goods summary bar */}
+                    <div style={{ background: "#ffffff", border: "1px solid rgba(0,0,0,0.08)", borderRadius: 10, padding: "12px 16px", marginBottom: 14, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                        <span style={{ fontSize: 20 }}>📦</span>
+                        <div>
+                          <div style={{ fontFamily: "Rajdhani", fontSize: 11, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.08em" }}>Cargo</div>
+                          <div style={{ fontFamily: "Syne", fontWeight: 700, fontSize: 15, color: "#111827" }}>{selected.type}</div>
+                        </div>
+                      </div>
+                      <div style={{ display: "flex", gap: 20 }}>
+                        {[
+                          { label: "Weight", val: selected.weight },
+                          { label: "Route", val: `${selected.origin.split(",")[0]} → ${selected.destination.split(",")[0]}` },
+                          { label: "Distance", val: selected.distance },
+                          { label: "Deadline", val: selected.deadline },
+                        ].map(({ label, val }) => (
+                          <div key={label}>
+                            <div style={{ fontFamily: "Rajdhani", fontSize: 11, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.07em" }}>{label}</div>
+                            <div style={{ fontFamily: "Rajdhani", fontWeight: 600, fontSize: 13, color: "#374151" }}>{val}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                     <div style={{ fontFamily: "Syne", fontWeight: 700, fontSize: 15, color: "#1f2937", marginBottom: 12 }}>
-                      Bids <span style={{ fontFamily: "JetBrains Mono", fontSize: 11, color: "#d1d5db", fontWeight: 400 }}>— sorted lowest to highest</span>
+                      All Bids <span style={{ fontFamily: "JetBrains Mono", fontSize: 11, color: "#d1d5db", fontWeight: 400 }}>— sorted lowest to highest</span>
                     </div>
                     {sortedBids.length === 0 ? (
-                      <div style={{ textAlign: "center", padding: "32px 0", color: "#e5e7eb", fontFamily: "Rajdhani", fontSize: 14 }}>No bids yet</div>
+                      <div style={{ textAlign: "center", padding: "32px 0", color: "#9ca3af", fontFamily: "Rajdhani", fontSize: 14 }}>No bids yet</div>
                     ) : (
                       sortedBids.map((bid, i) => (
                         <BidRow
@@ -1070,15 +1135,67 @@ export default function App() {
                           isWinner={i === 0 && selected.status === "closed"}
                           rank={i + 1}
                           onViewProfile={setProfileCarrier}
-                          canAward={view === "shipper" && selected.status === "live"}
+                          canAward={selected.status === "live"}
                           onAward={b => setAwardConfirm({ bid: b, cargo: selected })}
+                          cargoId={selected.id}
+                          cargoType={selected.type}
                         />
                       ))
                     )}
                   </div>
                 )}
 
-                {activeTab === "chart" && (
+                {activeTab === "bids" && view === "carrier" && (
+                  <div style={{ marginBottom: 16 }}>
+                    {/* Blind auction info banner */}
+                    <div style={{ background: "rgba(220,38,38,0.04)", border: "1px solid rgba(220,38,38,0.15)", borderRadius: 12, padding: "12px 16px", marginBottom: 14, display: "flex", alignItems: "center", gap: 10 }}>
+                      <span style={{ fontSize: 16 }}>🔒</span>
+                      <div style={{ fontFamily: "Rajdhani", fontSize: 13, color: "#6b7280", lineHeight: 1.5 }}>
+                        <strong style={{ color: "#374151" }}>Blind auction.</strong> Carrier identities and individual bids are hidden. You can only see the current lowest bid to beat.
+                      </div>
+                    </div>
+
+                    {selected.bids.length === 0 ? (
+                      /* No bids yet — be first */
+                      <div style={{ background: "rgba(0,0,0,0.03)", border: "1px solid rgba(0,0,0,0.07)", borderRadius: 14, padding: "32px 20px", textAlign: "center" }}>
+                        <div style={{ fontSize: 32, marginBottom: 10 }}>🎯</div>
+                        <div style={{ fontFamily: "Syne", fontWeight: 700, fontSize: 16, color: "#1f2937", marginBottom: 6 }}>No bids yet</div>
+                        <div style={{ fontFamily: "Rajdhani", fontSize: 14, color: "#9ca3af" }}>Be the first to bid on this cargo</div>
+                      </div>
+                    ) : (
+                      /* Show only the lowest bid anonymously */
+                      <div style={{ background: "#ffffff", border: "2px solid rgba(220,38,38,0.25)", borderRadius: 14, padding: "24px 24px" }}>
+                        <div style={{ fontFamily: "Rajdhani", fontSize: 12, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 16, textAlign: "center" }}>Current lowest bid</div>
+                        <div style={{ textAlign: "center", marginBottom: 20 }}>
+                          <div style={{ fontFamily: "JetBrains Mono", fontWeight: 700, fontSize: 40, color: "#dc2626", letterSpacing: "-0.02em" }}>
+                            {formatINR(sortedBids[0].amount)}
+                          </div>
+                          <div style={{ fontFamily: "Rajdhani", fontSize: 13, color: "#9ca3af", marginTop: 6 }}>
+                            {selected.bids.length} bid{selected.bids.length !== 1 ? "s" : ""} received · Carrier identity hidden
+                          </div>
+                        </div>
+
+                        {/* Savings vs base rate */}
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 16 }}>
+                          <div style={{ background: "rgba(0,0,0,0.03)", borderRadius: 10, padding: "12px 14px", textAlign: "center" }}>
+                            <div style={{ fontFamily: "Rajdhani", fontSize: 11, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 4 }}>Base Rate</div>
+                            <div style={{ fontFamily: "JetBrains Mono", fontWeight: 700, fontSize: 18, color: "#6b7280" }}>{formatINR(selected.baseRate)}</div>
+                          </div>
+                          <div style={{ background: "rgba(22,163,74,0.06)", border: "1px solid rgba(22,163,74,0.2)", borderRadius: 10, padding: "12px 14px", textAlign: "center" }}>
+                            <div style={{ fontFamily: "Rajdhani", fontSize: 11, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 4 }}>Shipper Saves</div>
+                            <div style={{ fontFamily: "JetBrains Mono", fontWeight: 700, fontSize: 18, color: "#16a34a" }}>{formatINR(selected.baseRate - sortedBids[0].amount)}</div>
+                          </div>
+                        </div>
+
+                        <div style={{ background: "rgba(220,38,38,0.05)", borderRadius: 10, padding: "12px 16px", fontFamily: "Rajdhani", fontSize: 13, color: "#6b7280", lineHeight: 1.6, textAlign: "center" }}>
+                          To win this cargo, submit a bid <strong style={{ color: "#dc2626" }}>below {formatINR(sortedBids[0].amount)}</strong>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {activeTab === "chart" && view === "shipper" && (
                   <div style={{ background: "rgba(0,0,0,0.03)", border: "1px solid rgba(0,0,0,0.07)", borderRadius: 14, padding: "18px 18px", marginBottom: 16 }}>
                     <div style={{ fontFamily: "Syne", fontWeight: 700, fontSize: 15, color: "#1f2937", marginBottom: 12 }}>
                       Bid History <span style={{ fontFamily: "JetBrains Mono", fontSize: 11, color: "#d1d5db", fontWeight: 400 }}>— chronological</span>
@@ -1087,6 +1204,126 @@ export default function App() {
                     <div style={{ fontFamily: "JetBrains Mono", fontSize: 10, color: "#e5e7eb", marginTop: 8, textAlign: "center" }}>
                       Dashed line = base rate · Each dot = a bid
                     </div>
+                  </div>
+                )}
+
+                {activeTab === "cargo" && selected.specs && (
+                  <div style={{ marginBottom: 16 }}>
+
+                    {/* Route + Identity */}
+                    <div style={{ background: "#ffffff", border: "1px solid rgba(0,0,0,0.08)", borderRadius: 14, padding: "18px 20px", marginBottom: 12 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+                        <span style={{ fontFamily: "JetBrains Mono", fontSize: 12, color: "#dc2626", fontWeight: 700 }}>{selected.id}</span>
+                        <span style={{ fontFamily: "Rajdhani", fontWeight: 700, fontSize: 15, color: "#111827" }}>{selected.type}</span>
+                        {selected.specs.hazardous && <Pill color="#dc2626">⚠ Hazardous</Pill>}
+                        {selected.specs.fragile && <Pill color="#f59e0b">🔸 Fragile</Pill>}
+                        {selected.specs.tempControlled && <Pill color="#2563eb">❄ Temp Controlled</Pill>}
+                      </div>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
+                        {[
+                          { label: "Origin", val: selected.origin, icon: "📍" },
+                          { label: "Destination", val: selected.destination, icon: "🏁" },
+                          { label: "Distance", val: selected.distance, icon: "🛣" },
+                          { label: "Delivery Deadline", val: selected.deadline, icon: "📅" },
+                        ].map(({ label, val, icon }) => (
+                          <div key={label} style={{ background: "rgba(0,0,0,0.03)", borderRadius: 10, padding: "12px 14px" }}>
+                            <div style={{ fontFamily: "Rajdhani", fontSize: 11, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 4 }}>{icon} {label}</div>
+                            <div style={{ fontFamily: "Rajdhani", fontWeight: 700, fontSize: 13, color: "#1f2937" }}>{val}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Weight & Dimensions */}
+                    <div style={{ background: "#ffffff", border: "1px solid rgba(0,0,0,0.08)", borderRadius: 14, padding: "18px 20px", marginBottom: 12 }}>
+                      <div style={{ fontFamily: "Syne", fontWeight: 700, fontSize: 14, color: "#111827", marginBottom: 14 }}>⚖ Weight & Dimensions</div>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10, marginBottom: 12 }}>
+                        {[
+                          { label: "Gross Weight", val: selected.specs.grossWeight },
+                          { label: "Net Weight", val: selected.specs.netWeight },
+                          { label: "Volume", val: selected.specs.volume },
+                          { label: "No. of Pieces", val: selected.specs.pieces },
+                        ].map(({ label, val }) => (
+                          <div key={label} style={{ background: "rgba(220,38,38,0.04)", border: "1px solid rgba(220,38,38,0.1)", borderRadius: 10, padding: "12px 14px", textAlign: "center" }}>
+                            <div style={{ fontFamily: "JetBrains Mono", fontWeight: 700, fontSize: 18, color: "#dc2626" }}>{val}</div>
+                            <div style={{ fontFamily: "Rajdhani", fontSize: 11, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.07em", marginTop: 4 }}>{label}</div>
+                          </div>
+                        ))}
+                      </div>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
+                        {[
+                          { label: "Length", val: selected.specs.length },
+                          { label: "Width", val: selected.specs.width },
+                          { label: "Height", val: selected.specs.height },
+                        ].map(({ label, val }) => (
+                          <div key={label} style={{ background: "rgba(0,0,0,0.03)", borderRadius: 10, padding: "12px 14px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                            <span style={{ fontFamily: "Rajdhani", fontSize: 13, color: "#6b7280" }}>{label}</span>
+                            <span style={{ fontFamily: "JetBrains Mono", fontWeight: 700, fontSize: 14, color: "#1f2937" }}>{val}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Handling & Requirements */}
+                    <div style={{ background: "#ffffff", border: "1px solid rgba(0,0,0,0.08)", borderRadius: 14, padding: "18px 20px", marginBottom: 12 }}>
+                      <div style={{ fontFamily: "Syne", fontWeight: 700, fontSize: 14, color: "#111827", marginBottom: 14 }}>🚚 Handling & Requirements</div>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10, marginBottom: 12 }}>
+                        {[
+                          { label: "Packaging", val: selected.specs.packaging },
+                          { label: "Vehicle Type", val: selected.specs.vehicleType },
+                          { label: "Loading", val: selected.specs.loadingType },
+                          { label: "Unloading", val: selected.specs.unloadingType },
+                        ].map(({ label, val }) => (
+                          <div key={label} style={{ display: "flex", justifyContent: "space-between", padding: "10px 14px", background: "rgba(0,0,0,0.03)", borderRadius: 9 }}>
+                            <span style={{ fontFamily: "Rajdhani", fontSize: 13, color: "#9ca3af" }}>{label}</span>
+                            <span style={{ fontFamily: "Rajdhani", fontWeight: 600, fontSize: 13, color: "#1f2937", textAlign: "right", maxWidth: "60%" }}>{val}</span>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Flags */}
+                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
+                        {[
+                          { label: "Hazardous", val: selected.specs.hazardous },
+                          { label: "Fragile", val: selected.specs.fragile },
+                          { label: "Stackable", val: selected.specs.stackable },
+                          { label: "Temp Controlled", val: selected.specs.tempControlled },
+                        ].map(({ label, val }) => (
+                          <div key={label} style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 20, background: val ? "rgba(22,163,74,0.08)" : "rgba(0,0,0,0.04)", border: `1px solid ${val ? "rgba(22,163,74,0.2)" : "rgba(0,0,0,0.07)"}` }}>
+                            <span style={{ fontSize: 12 }}>{val ? "✓" : "✗"}</span>
+                            <span style={{ fontFamily: "Rajdhani", fontWeight: 600, fontSize: 12, color: val ? "#16a34a" : "#9ca3af" }}>{label}</span>
+                          </div>
+                        ))}
+                      </div>
+
+                      {selected.specs.tempRange && (
+                        <div style={{ background: "rgba(37,99,235,0.06)", border: "1px solid rgba(37,99,235,0.2)", borderRadius: 9, padding: "10px 14px", marginBottom: 10 }}>
+                          <span style={{ fontFamily: "Rajdhani", fontSize: 12, color: "#6b7280" }}>Temperature Range: </span>
+                          <span style={{ fontFamily: "JetBrains Mono", fontWeight: 700, fontSize: 13, color: "#2563eb" }}>{selected.specs.tempRange}</span>
+                        </div>
+                      )}
+
+                      {/* Special instructions */}
+                      <div style={{ background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.2)", borderRadius: 9, padding: "12px 14px" }}>
+                        <div style={{ fontFamily: "Rajdhani", fontSize: 11, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 5 }}>⚠ Special Instructions</div>
+                        <div style={{ fontFamily: "Rajdhani", fontSize: 14, color: "#374151", lineHeight: 1.6 }}>{selected.specs.specialInstructions}</div>
+                      </div>
+                    </div>
+
+                    {/* Insurance + Shipper contact */}
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                      <div style={{ background: "#ffffff", border: "1px solid rgba(0,0,0,0.08)", borderRadius: 14, padding: "16px 18px" }}>
+                        <div style={{ fontFamily: "Syne", fontWeight: 700, fontSize: 14, color: "#111827", marginBottom: 12 }}>🛡 Insurance</div>
+                        <div style={{ fontFamily: "JetBrains Mono", fontWeight: 700, fontSize: 16, color: "#dc2626" }}>{selected.specs.insurance}</div>
+                      </div>
+                      <div style={{ background: "#ffffff", border: "1px solid rgba(0,0,0,0.08)", borderRadius: 14, padding: "16px 18px" }}>
+                        <div style={{ fontFamily: "Syne", fontWeight: 700, fontSize: 14, color: "#111827", marginBottom: 12 }}>👤 Shipper Contact</div>
+                        <div style={{ fontFamily: "Rajdhani", fontWeight: 700, fontSize: 14, color: "#1f2937" }}>{selected.specs.postedBy}</div>
+                        <div style={{ fontFamily: "Rajdhani", fontSize: 13, color: "#6b7280" }}>{selected.specs.contactPerson}</div>
+                        <div style={{ fontFamily: "JetBrains Mono", fontSize: 12, color: "#dc2626", marginTop: 4 }}>{selected.specs.phone}</div>
+                      </div>
+                    </div>
+
                   </div>
                 )}
 
