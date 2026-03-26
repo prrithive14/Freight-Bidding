@@ -377,125 +377,121 @@ function ModalField({ label, span, children }) {
 
 function PostCargoModal({ onClose, onPost }) {
   const [step, setStep] = useState(1);
+  const [flags, setFlags] = useState({ hazardous: false, fragile: false, stackable: true, tempControlled: false });
+  const [showTempRange, setShowTempRange] = useState(false);
   const TOTAL_STEPS = 4;
+  const STEPS = ["Route & Pricing", "Weight & Dimensions", "Handling", "Contact & Review"];
 
-  const [form, setForm] = useState({
-    origin: CITIES[0], destination: CITIES[1],
-    type: CARGO_TYPES[0], deadline: "", timer: "300", baseRate: "",
-    description: "",
-    grossWeight: "", netWeight: "", volume: "", pieces: "",
-    length: "", width: "", height: "", packaging: "Palletised (HDPE wrapped)",
-    vehicleType: "32 ft Container / Multi-axle",
-    loadingType: "Dock Loading", unloadingType: "Dock Unloading",
-    hazardous: false, fragile: false, stackable: true, tempControlled: false,
-    tempRange: "", specialInstructions: "",
-    postedBy: "", contactPerson: "", phone: "", insurance: "",
-  });
+  const r = {
+    origin: useRef(), destination: useRef(), type: useRef(),
+    deadline: useRef(), timer: useRef(), baseRate: useRef(), description: useRef(),
+    grossWeight: useRef(), netWeight: useRef(), volume: useRef(), pieces: useRef(),
+    length: useRef(), width: useRef(), height: useRef(), packaging: useRef(),
+    vehicleType: useRef(), loadingType: useRef(), unloadingType: useRef(),
+    tempRange: useRef(), specialInstructions: useRef(),
+    postedBy: useRef(), contactPerson: useRef(), phone: useRef(), insurance: useRef(),
+  };
 
-  const setE = k => e => setForm(f => ({ ...f, [k]: e.target.value }));
-  const toggle = k => setForm(f => ({ ...f, [k]: !f[k] }));
+  const v = k => r[k]?.current?.value || "";
 
   const canNext = () => {
-    if (step === 1) return form.origin && form.destination && form.origin !== form.destination && form.deadline && form.baseRate;
-    if (step === 2) return form.grossWeight && form.volume && form.pieces;
+    if (step === 1) return v("origin") && v("destination") && v("origin") !== v("destination") && v("deadline") && v("baseRate");
+    if (step === 2) return v("grossWeight") && v("volume") && v("pieces");
     if (step === 3) return true;
-    if (step === 4) return form.postedBy && form.contactPerson && form.phone;
+    if (step === 4) return v("postedBy") && v("contactPerson") && v("phone");
     return true;
   };
 
+  const goNext = () => {
+    if (!canNext()) { alert("Please fill in the required fields (marked *) before continuing."); return; }
+    setStep(s => s + 1);
+  };
+
   const handleSubmit = () => {
-    if (!canNext()) return;
+    if (!canNext()) { alert("Please fill in the required fields."); return; }
+    const gw = Number(v("grossWeight"));
     onPost({
       id: `RNT-${String(Math.floor(Math.random() * 900) + 100)}`,
-      origin: form.origin, destination: form.destination,
-      weight: `${Number(form.grossWeight).toLocaleString("en-IN")} kg`,
-      type: form.type,
+      origin: v("origin"), destination: v("destination"),
+      weight: `${gw.toLocaleString("en-IN")} kg`,
+      type: v("type"),
       distance: `${Math.floor(Math.random() * 1200 + 300)} km`,
-      deadline: form.deadline,
-      baseRate: Number(form.baseRate),
-      status: "live", timer: Number(form.timer), bids: [],
+      deadline: v("deadline"),
+      baseRate: Number(v("baseRate")),
+      status: "live", timer: Number(v("timer")) || 300, bids: [],
       specs: {
-        grossWeight: `${Number(form.grossWeight).toLocaleString("en-IN")} kg`,
-        netWeight: form.netWeight ? `${Number(form.netWeight).toLocaleString("en-IN")} kg` : "—",
-        volume: form.volume ? `${form.volume} CBM` : "—",
-        length: form.length ? `${form.length} m` : "—",
-        width: form.width ? `${form.width} m` : "—",
-        height: form.height ? `${form.height} m` : "—",
-        pieces: Number(form.pieces) || 0,
-        packaging: form.packaging,
-        vehicleType: form.vehicleType,
-        hazardous: form.hazardous, fragile: form.fragile,
-        stackable: form.stackable, tempControlled: form.tempControlled,
-        tempRange: form.tempRange || null,
-        loadingType: form.loadingType, unloadingType: form.unloadingType,
-        insurance: form.insurance ? `₹${Number(form.insurance).toLocaleString("en-IN")}` : "—",
-        specialInstructions: form.specialInstructions || "None",
-        description: form.description || "",
-        postedBy: form.postedBy, contactPerson: form.contactPerson, phone: form.phone,
+        grossWeight: `${gw.toLocaleString("en-IN")} kg`,
+        netWeight: v("netWeight") ? `${Number(v("netWeight")).toLocaleString("en-IN")} kg` : "—",
+        volume: v("volume") ? `${v("volume")} CBM` : "—",
+        length: v("length") ? `${v("length")} m` : "—",
+        width: v("width") ? `${v("width")} m` : "—",
+        height: v("height") ? `${v("height")} m` : "—",
+        pieces: Number(v("pieces")) || 0,
+        packaging: v("packaging"),
+        vehicleType: v("vehicleType"),
+        hazardous: flags.hazardous, fragile: flags.fragile,
+        stackable: flags.stackable, tempControlled: flags.tempControlled,
+        tempRange: flags.tempControlled ? v("tempRange") : null,
+        loadingType: v("loadingType"), unloadingType: v("unloadingType"),
+        insurance: v("insurance") ? `₹${Number(v("insurance")).toLocaleString("en-IN")}` : "—",
+        specialInstructions: v("specialInstructions") || "None",
+        description: v("description") || "",
+        postedBy: v("postedBy"), contactPerson: v("contactPerson"), phone: v("phone"),
       },
     });
     onClose();
   };
 
-  const STEPS = ["Route & Pricing", "Weight & Dimensions", "Handling", "Contact & Review"];
+  const IS = MODAL_INPUT_STYLE;
+  const TA = MODAL_TA_STYLE;
 
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 800, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}>
       <div style={{ width: 640, maxHeight: "92vh", background: "#fff", borderRadius: 20, boxShadow: "0 32px 80px rgba(0,0,0,0.25)", animation: "slideDown 0.25s ease", display: "flex", flexDirection: "column" }}>
-
-        {/* Header */}
         <div style={{ padding: "22px 28px 0", flexShrink: 0 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
             <div>
               <div style={{ fontFamily: "Syne", fontWeight: 800, fontSize: 20, color: "#111827" }}>Post New Cargo</div>
               <div style={{ fontFamily: "Rajdhani", fontSize: 13, color: "#9ca3af", marginTop: 2 }}>Step {step} of {TOTAL_STEPS} — {STEPS[step - 1]}</div>
             </div>
-            <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "#9ca3af", fontSize: 22, lineHeight: 1 }}>×</button>
+            <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "#9ca3af", fontSize: 24, lineHeight: 1, padding: 4 }}>×</button>
           </div>
-
-          {/* Step progress */}
           <div style={{ display: "flex", gap: 6, marginBottom: 22 }}>
             {STEPS.map((s, i) => (
               <div key={s} style={{ flex: 1 }}>
-                <div style={{ height: 3, borderRadius: 2, background: i + 1 <= step ? "#dc2626" : "rgba(0,0,0,0.08)", transition: "background 0.3s" }} />
+                <div style={{ height: 3, borderRadius: 2, background: i + 1 <= step ? "#dc2626" : "rgba(0,0,0,0.08)" }} />
                 <div style={{ fontFamily: "Rajdhani", fontSize: 10, color: i + 1 <= step ? "#dc2626" : "#d1d5db", marginTop: 4, textTransform: "uppercase", letterSpacing: "0.06em" }}>{s}</div>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Scrollable body */}
-        <div style={{ flex: 1, overflowY: "auto", padding: "0 28px" }}>
-
-          {/* ── STEP 1: Route & Pricing ── */}
+        <div style={{ flex: 1, overflowY: "auto", padding: "4px 28px 8px" }}>
           {step === 1 && (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, paddingBottom: 8 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
               <ModalField label="Origin City">
-                <select value={form.origin} onChange={setE("origin")} style={MODAL_INPUT_STYLE}>
-                  {CITIES.map(c => <option key={c}>{c}</option>)}
+                <select ref={r.origin} defaultValue={CITIES[0]} style={IS}>
+                  {CITIES.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </ModalField>
               <ModalField label="Destination City">
-                <select value={form.destination} onChange={setE("destination")} style={MODAL_INPUT_STYLE}>
-                  {CITIES.map(c => <option key={c}>{c}</option>)}
+                <select ref={r.destination} defaultValue={CITIES[1]} style={IS}>
+                  {CITIES.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </ModalField>
-              {form.origin === form.destination && (
-                <div style={{ gridColumn: "span 2", fontFamily: "Rajdhani", fontSize: 13, color: "#dc2626" }}>⚠ Origin and destination cannot be the same</div>
-              )}
               <ModalField label="Cargo Type">
-                <select value={form.type} onChange={setE("type")} style={MODAL_INPUT_STYLE}>
-                  {CARGO_TYPES.map(t => <option key={t}>{t}</option>)}
+                <select ref={r.type} defaultValue={CARGO_TYPES[0]} style={IS}>
+                  {CARGO_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                 </select>
               </ModalField>
-              <ModalField label="Delivery Deadline">
-                <input type="date" value={form.deadline} onChange={setE("deadline")} style={MODAL_INPUT_STYLE} />
+              <ModalField label="Delivery Deadline *">
+                <input ref={r.deadline} type="date" style={IS} />
               </ModalField>
-              <ModalField label="Base Rate (₹)" >
-                <input type="number" placeholder="e.g. 55000" value={form.baseRate} onChange={setE("baseRate")} style={MODAL_INPUT_STYLE} />
+              <ModalField label="Base Rate (₹) *">
+                <input ref={r.baseRate} type="number" placeholder="e.g. 55000" style={IS} />
               </ModalField>
               <ModalField label="Bidding Window">
-                <select value={form.timer} onChange={setE("timer")} style={{ ...MODAL_INPUT_STYLE, cursor: "pointer" }}>
+                <select ref={r.timer} defaultValue="300" style={IS}>
                   <option value="120">2 minutes</option>
                   <option value="300">5 minutes</option>
                   <option value="600">10 minutes</option>
@@ -504,68 +500,59 @@ function PostCargoModal({ onClose, onPost }) {
                 </select>
               </ModalField>
               <ModalField label="Cargo Description" span>
-                <textarea
-                  placeholder="Describe the cargo in detail — what it is, condition, any relevant info for the carrier. e.g. 'Mixed FMCG goods including dry groceries and household items, factory-sealed cartons, ready for dispatch from Nhava Sheva warehouse.'"
-                  value={form.description}
-                  onChange={setE("description")}
-                  style={{ ...taS, minHeight: 90 }}
-                />
+                <textarea ref={r.description} placeholder="Describe the cargo in detail — what it is, condition, any relevant info for the carrier..." style={TA} />
               </ModalField>
             </div>
           )}
 
-          {/* ── STEP 2: Weight & Dimensions ── */}
           {step === 2 && (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, paddingBottom: 8 }}>
-              <ModalField label="Gross Weight (kg)">
-                <input type="number" placeholder="e.g. 18500" value={form.grossWeight} onChange={setE("grossWeight")} style={MODAL_INPUT_STYLE} />
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+              <ModalField label="Gross Weight (kg) *">
+                <input ref={r.grossWeight} type="number" placeholder="e.g. 18500" style={IS} />
               </ModalField>
               <ModalField label="Net Weight (kg)">
-                <input type="number" placeholder="e.g. 17200" value={form.netWeight} onChange={setE("netWeight")} style={MODAL_INPUT_STYLE} />
+                <input ref={r.netWeight} type="number" placeholder="e.g. 17200" style={IS} />
               </ModalField>
-              <ModalField label="Volume (CBM)">
-                <input type="number" placeholder="e.g. 62" value={form.volume} onChange={setE("volume")} style={MODAL_INPUT_STYLE} />
+              <ModalField label="Volume (CBM) *">
+                <input ref={r.volume} type="number" placeholder="e.g. 62" style={IS} />
               </ModalField>
-              <ModalField label="No. of Pieces / Units">
-                <input type="number" placeholder="e.g. 240" value={form.pieces} onChange={setE("pieces")} style={MODAL_INPUT_STYLE} />
+              <ModalField label="No. of Pieces *">
+                <input ref={r.pieces} type="number" placeholder="e.g. 240" style={IS} />
               </ModalField>
               <ModalField label="Length (m)">
-                <input type="number" step="0.1" placeholder="e.g. 12.2" value={form.length} onChange={setE("length")} style={MODAL_INPUT_STYLE} />
+                <input ref={r.length} type="number" step="0.1" placeholder="e.g. 12.2" style={IS} />
               </ModalField>
               <ModalField label="Width (m)">
-                <input type="number" step="0.1" placeholder="e.g. 2.4" value={form.width} onChange={setE("width")} style={MODAL_INPUT_STYLE} />
+                <input ref={r.width} type="number" step="0.1" placeholder="e.g. 2.4" style={IS} />
               </ModalField>
               <ModalField label="Height (m)">
-                <input type="number" step="0.1" placeholder="e.g. 2.6" value={form.height} onChange={setE("height")} style={MODAL_INPUT_STYLE} />
+                <input ref={r.height} type="number" step="0.1" placeholder="e.g. 2.6" style={IS} />
               </ModalField>
               <ModalField label="Packaging Type">
-                <select value={form.packaging} onChange={setE("packaging")} style={MODAL_INPUT_STYLE}>
-                  {["Palletised (HDPE wrapped)","Insulated Crates","Loose / Break Bulk","Drums","Bags / Sacks","Boxes / Cartons","IBC Tanks","Customised Crating"].map(p => <option key={p}>{p}</option>)}
+                <select ref={r.packaging} defaultValue="Palletised (HDPE wrapped)" style={IS}>
+                  {["Palletised (HDPE wrapped)","Insulated Crates","Loose / Break Bulk","Drums","Bags / Sacks","Boxes / Cartons","IBC Tanks","Customised Crating"].map(p => <option key={p} value={p}>{p}</option>)}
                 </select>
               </ModalField>
             </div>
           )}
 
-          {/* ── STEP 3: Handling & Requirements ── */}
           {step === 3 && (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, paddingBottom: 8 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
               <ModalField label="Vehicle Type Required" span>
-                <select value={form.vehicleType} onChange={setE("vehicleType")} style={MODAL_INPUT_STYLE}>
-                  {["32 ft Container / Multi-axle","20 ft Reefer Container","Flatbed Trailer / Open Body","Mini Truck (1-2T)","LCV (3-5T)","HCV (10-15T)","Tanker","Tipper","Any"].map(v => <option key={v}>{v}</option>)}
+                <select ref={r.vehicleType} defaultValue="32 ft Container / Multi-axle" style={IS}>
+                  {["32 ft Container / Multi-axle","20 ft Reefer Container","Flatbed Trailer / Open Body","Mini Truck (1-2T)","LCV (3-5T)","HCV (10-15T)","Tanker","Tipper","Any"].map(vt => <option key={vt} value={vt}>{vt}</option>)}
                 </select>
               </ModalField>
               <ModalField label="Loading Method">
-                <select value={form.loadingType} onChange={setE("loadingType")} style={MODAL_INPUT_STYLE}>
-                  {["Dock Loading","Ground Level Loading","Crane Loading","Forklift Loading","Manual Loading"].map(v => <option key={v}>{v}</option>)}
+                <select ref={r.loadingType} defaultValue="Dock Loading" style={IS}>
+                  {["Dock Loading","Ground Level Loading","Crane Loading","Forklift Loading","Manual Loading"].map(vt => <option key={vt} value={vt}>{vt}</option>)}
                 </select>
               </ModalField>
               <ModalField label="Unloading Method">
-                <select value={form.unloadingType} onChange={setE("unloadingType")} style={MODAL_INPUT_STYLE}>
-                  {["Dock Unloading","Ground Level Unloading","Crane Unloading","Cold Storage Dock","Forklift Unloading","Manual Unloading"].map(v => <option key={v}>{v}</option>)}
+                <select ref={r.unloadingType} defaultValue="Dock Unloading" style={IS}>
+                  {["Dock Unloading","Ground Level Unloading","Crane Unloading","Cold Storage Dock","Forklift Unloading","Manual Unloading"].map(vt => <option key={vt} value={vt}>{vt}</option>)}
                 </select>
               </ModalField>
-
-              {/* Flags */}
               <div style={{ gridColumn: "span 2" }}>
                 <ModalLbl>Cargo Flags</ModalLbl>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
@@ -575,81 +562,56 @@ function PostCargoModal({ onClose, onPost }) {
                     { label: "Stackable", field: "stackable", icon: "📚" },
                     { label: "Temperature Controlled", field: "tempControlled", icon: "❄" },
                   ].map(({ label, field, icon }) => (
-                    <div key={field} onClick={() => toggle(field)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", borderRadius: 8, border: `1px solid ${form[field] ? "rgba(220,38,38,0.3)" : "#e5e7eb"}`, background: form[field] ? "rgba(220,38,38,0.05)" : "#fff", cursor: "pointer", userSelect: "none" }}>
-                      <div style={{ width: 18, height: 18, borderRadius: 4, background: form[field] ? "#dc2626" : "#e5e7eb", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 11, color: "#fff", fontWeight: 700 }}>{form[field] ? "✓" : ""}</div>
-                      <span style={{ fontFamily: "Rajdhani", fontWeight: 600, fontSize: 13, color: form[field] ? "#dc2626" : "#6b7280" }}>{icon} {label}</span>
+                    <div key={field} onClick={() => {
+                      if (field === "tempControlled") setShowTempRange(p => !p);
+                      setFlags(f => ({ ...f, [field]: !f[field] }));
+                    }} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", borderRadius: 8, border: `1px solid ${flags[field] ? "rgba(220,38,38,0.3)" : "#e5e7eb"}`, background: flags[field] ? "#fdf2f2" : "#fff", cursor: "pointer", userSelect: "none" }}>
+                      <div style={{ width: 18, height: 18, borderRadius: 4, background: flags[field] ? "#dc2626" : "#e5e7eb", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, color: "#fff", fontWeight: 700, fontSize: 11 }}>{flags[field] ? "✓" : ""}</div>
+                      <span style={{ fontFamily: "Rajdhani", fontWeight: 600, fontSize: 13, color: flags[field] ? "#dc2626" : "#6b7280" }}>{icon} {label}</span>
                     </div>
                   ))}
                 </div>
               </div>
-
-              {form.tempControlled && (
+              {showTempRange && (
                 <ModalField label="Temperature Range" span>
-                  <input placeholder="e.g. 2°C – 8°C (Refrigerated)" value={form.tempRange} onChange={setE("tempRange")} style={MODAL_INPUT_STYLE} />
+                  <input ref={r.tempRange} placeholder="e.g. 2°C – 8°C (Refrigerated)" style={IS} />
                 </ModalField>
               )}
-
-              <ModalField label="Special Instructions / Remarks" span>
-                <textarea placeholder="e.g. Secure strapping required. No stacking above 2 layers. Escort vehicle mandatory on NH-48." value={form.specialInstructions} onChange={setE("specialInstructions")} style={MODAL_TA_STYLE} />
+              <ModalField label="Special Instructions" span>
+                <textarea ref={r.specialInstructions} placeholder="e.g. Secure strapping required. No stacking above 2 layers. Escort vehicle mandatory on NH-48." style={TA} />
               </ModalField>
             </div>
           )}
 
-          {/* ── STEP 4: Contact & Review ── */}
           {step === 4 && (
-            <div style={{ paddingBottom: 8 }}>
+            <div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 16 }}>
-                <ModalField label="Company / Organisation" span>
-                  <input placeholder="e.g. Ramnath Industries Pvt. Ltd." value={form.postedBy} onChange={setE("postedBy")} style={MODAL_INPUT_STYLE} />
+                <ModalField label="Company / Organisation *" span>
+                  <input ref={r.postedBy} placeholder="e.g. Ramnath Industries Pvt. Ltd." style={IS} />
                 </ModalField>
-                <ModalField label="Contact Person">
-                  <input placeholder="e.g. Ankit Sharma" value={form.contactPerson} onChange={setE("contactPerson")} style={MODAL_INPUT_STYLE} />
+                <ModalField label="Contact Person *">
+                  <input ref={r.contactPerson} placeholder="e.g. Ankit Sharma" style={IS} />
                 </ModalField>
-                <ModalField label="Phone Number">
-                  <input placeholder="+91 98100 23456" value={form.phone} onChange={setE("phone")} style={MODAL_INPUT_STYLE} />
+                <ModalField label="Phone Number *">
+                  <input ref={r.phone} placeholder="+91 98100 23456" style={IS} />
                 </ModalField>
-                <ModalField label="Cargo Insurance Value (₹)" span>
-                  <input type="number" placeholder="e.g. 1850000" value={form.insurance} onChange={setE("insurance")} style={MODAL_INPUT_STYLE} />
+                <ModalField label="Cargo Insurance Value (₹)">
+                  <input ref={r.insurance} type="number" placeholder="e.g. 1850000" style={IS} />
                 </ModalField>
               </div>
-
-              {/* Summary */}
-              <div style={{ background: "#fdf2f2", border: "1px solid rgba(220,38,38,0.2)", borderRadius: 12, padding: "16px 18px" }}>
-                <div style={{ fontFamily: "Syne", fontWeight: 700, fontSize: 14, color: "#111827", marginBottom: 12 }}>Review before posting</div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                  {[
-                    { label: "Route", val: `${form.origin.split(",")[0]} → ${form.destination.split(",")[0]}` },
-                    { label: "Cargo Type", val: form.type },
-                    { label: "Gross Weight", val: form.grossWeight ? `${Number(form.grossWeight).toLocaleString("en-IN")} kg` : "—" },
-                    { label: "Volume", val: form.volume ? `${form.volume} CBM` : "—" },
-                    { label: "Pieces", val: form.pieces || "—" },
-                    { label: "Vehicle", val: form.vehicleType },
-                    { label: "Base Rate", val: form.baseRate ? `₹${Number(form.baseRate).toLocaleString("en-IN")}` : "—" },
-                    { label: "Deadline", val: form.deadline || "—" },
-                    { label: "Bidding Window", val: { "120": "2 min", "300": "5 min", "600": "10 min", "1800": "30 min", "3600": "1 hr" }[form.timer] },
-                    { label: "Flags", val: [form.hazardous && "Hazardous", form.fragile && "Fragile", form.stackable && "Stackable", form.tempControlled && "Temp Controlled"].filter(Boolean).join(", ") || "None" },
-                  ].map(({ label, val }) => (
-                    <div key={label} style={{ display: "flex", justifyContent: "space-between", padding: "5px 0", borderBottom: "1px solid rgba(0,0,0,0.05)" }}>
-                      <span style={{ fontFamily: "Rajdhani", fontSize: 12, color: "#9ca3af" }}>{label}</span>
-                      <span style={{ fontFamily: "Rajdhani", fontWeight: 600, fontSize: 12, color: "#1f2937", textAlign: "right", maxWidth: "55%" }}>{val}</span>
-                    </div>
-                  ))}
-                </div>
+              <div style={{ background: "#fdf2f2", border: "1px solid rgba(220,38,38,0.15)", borderRadius: 12, padding: "16px 18px" }}>
+                <div style={{ fontFamily: "Syne", fontWeight: 700, fontSize: 14, color: "#111827", marginBottom: 8 }}>Ready to post</div>
+                <div style={{ fontFamily: "Rajdhani", fontSize: 13, color: "#6b7280", lineHeight: 1.7 }}>Once posted, carriers will immediately see this cargo and can start placing bids. Bidding closes after the window you selected.</div>
               </div>
             </div>
           )}
         </div>
 
-        {/* Footer */}
-        <div style={{ padding: "16px 28px 22px", flexShrink: 0, borderTop: "1px solid rgba(0,0,0,0.07)", display: "flex", gap: 10, marginTop: 8 }}>
+        <div style={{ padding: "14px 28px 20px", flexShrink: 0, borderTop: "1px solid rgba(0,0,0,0.07)", display: "flex", gap: 10 }}>
           <button onClick={step === 1 ? onClose : () => setStep(s => s - 1)} style={{ flex: 1, padding: "11px", borderRadius: 10, border: "1px solid rgba(0,0,0,0.1)", background: "transparent", color: "#6b7280", fontFamily: "Rajdhani", fontWeight: 700, fontSize: 15, cursor: "pointer" }}>
             {step === 1 ? "Cancel" : "← Back"}
           </button>
-          <button
-            disabled={!canNext()}
-            onClick={step === TOTAL_STEPS ? handleSubmit : () => setStep(s => s + 1)}
-            style={{ flex: 2, padding: "11px", borderRadius: 10, border: "none", cursor: canNext() ? "pointer" : "not-allowed", background: canNext() ? "linear-gradient(135deg, #dc2626, #b91c1c)" : "rgba(0,0,0,0.1)", color: canNext() ? "#fff" : "#9ca3af", fontFamily: "Syne", fontWeight: 800, fontSize: 15, transition: "all 0.2s" }}
-          >
+          <button onClick={step === TOTAL_STEPS ? handleSubmit : goNext} style={{ flex: 2, padding: "11px", borderRadius: 10, border: "none", cursor: "pointer", background: "linear-gradient(135deg, #dc2626, #b91c1c)", color: "#fff", fontFamily: "Syne", fontWeight: 800, fontSize: 15 }}>
             {step === TOTAL_STEPS ? "Post Cargo →" : `Next: ${STEPS[step]} →`}
           </button>
         </div>
@@ -657,6 +619,7 @@ function PostCargoModal({ onClose, onPost }) {
     </div>
   );
 }
+
 
 // ─── BID CHART ───────────────────────────────────────────────────────────────
 
