@@ -352,56 +352,48 @@ function CarrierProfileModal({ carrier, onClose }) {
 const CITIES = Object.keys(CITY_COORDS);
 const CARGO_TYPES = ["General Merchandise","Perishable Goods","Construction Material","Auto Parts","Electronics","Chemicals","Textiles","FMCG","Heavy Equipment"];
 
+// ── Modal field helpers — defined OUTSIDE the modal so they never remount on re-render ──
+const MODAL_INPUT_STYLE = {
+  width: "100%", padding: "10px 12px", borderRadius: 8,
+  background: "#ffffff", border: "1.5px solid #d1d5db",
+  color: "#111827", fontFamily: "Rajdhani", fontWeight: 600, fontSize: 14,
+  outline: "none", boxSizing: "border-box",
+};
+const MODAL_TA_STYLE = {
+  ...MODAL_INPUT_STYLE, resize: "vertical", minHeight: 88,
+  fontWeight: 400, lineHeight: 1.6,
+};
+function ModalLbl({ children }) {
+  return <div style={{ fontFamily: "Rajdhani", fontSize: 11, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 5 }}>{children}</div>;
+}
+function ModalField({ label, span, children }) {
+  return (
+    <div style={span ? { gridColumn: "span 2" } : {}}>
+      <ModalLbl>{label}</ModalLbl>
+      {children}
+    </div>
+  );
+}
+
 function PostCargoModal({ onClose, onPost }) {
   const [step, setStep] = useState(1);
   const TOTAL_STEPS = 4;
 
   const [form, setForm] = useState({
-    // Step 1 — Route
     origin: CITIES[0], destination: CITIES[1],
     type: CARGO_TYPES[0], deadline: "", timer: "300", baseRate: "",
     description: "",
-    // Step 2 — Weight & Dimensions
     grossWeight: "", netWeight: "", volume: "", pieces: "",
     length: "", width: "", height: "", packaging: "Palletised (HDPE wrapped)",
-    // Step 3 — Handling
     vehicleType: "32 ft Container / Multi-axle",
     loadingType: "Dock Loading", unloadingType: "Dock Unloading",
     hazardous: false, fragile: false, stackable: true, tempControlled: false,
-    tempRange: "",
-    specialInstructions: "",
-    // Step 4 — Contact
+    tempRange: "", specialInstructions: "",
     postedBy: "", contactPerson: "", phone: "", insurance: "",
   });
 
-  const set = k => val => setForm(f => ({ ...f, [k]: val }));
   const setE = k => e => setForm(f => ({ ...f, [k]: e.target.value }));
-  const toggle = k => () => setForm(f => ({ ...f, [k]: !f[k] }));
-
-  const iS = { // input style
-    width: "100%", padding: "10px 12px", borderRadius: 8,
-    background: "#ffffff", border: "1.5px solid #e5e7eb",
-    color: "#111827", fontFamily: "Rajdhani", fontWeight: 600, fontSize: 14,
-    outline: "none", boxSizing: "border-box", cursor: "text",
-    transition: "border-color 0.15s",
-  };
-  const taS = { ...iS, resize: "vertical", minHeight: 80, fontWeight: 400, lineHeight: 1.6, cursor: "text" };
-
-  const Lbl = ({ children }) => (
-    <div style={{ fontFamily: "Rajdhani", fontSize: 11, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 5 }}>{children}</div>
-  );
-  const F = ({ label, children, span }) => (
-    <div style={span ? { gridColumn: "span 2" } : {}}>
-      <Lbl>{label}</Lbl>
-      {children}
-    </div>
-  );
-  const Toggle = ({ label, field, icon }) => (
-    <div onClick={toggle(field)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", borderRadius: 8, border: `1px solid ${form[field] ? "rgba(220,38,38,0.3)" : "rgba(0,0,0,0.1)"}`, background: form[field] ? "rgba(220,38,38,0.05)" : "#fff", cursor: "pointer", userSelect: "none" }}>
-      <div style={{ width: 18, height: 18, borderRadius: 4, background: form[field] ? "#dc2626" : "rgba(0,0,0,0.08)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 11, color: "#fff" }}>{form[field] ? "✓" : ""}</div>
-      <span style={{ fontFamily: "Rajdhani", fontWeight: 600, fontSize: 13, color: form[field] ? "#dc2626" : "#6b7280" }}>{icon} {label}</span>
-    </div>
-  );
+  const toggle = k => setForm(f => ({ ...f, [k]: !f[k] }));
 
   const canNext = () => {
     if (step === 1) return form.origin && form.destination && form.origin !== form.destination && form.deadline && form.baseRate;
@@ -478,121 +470,128 @@ function PostCargoModal({ onClose, onPost }) {
           {/* ── STEP 1: Route & Pricing ── */}
           {step === 1 && (
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, paddingBottom: 8 }}>
-              <F label="Origin City">
-                <select value={form.origin} onChange={setE("origin")} style={iS}>
+              <ModalField label="Origin City">
+                <select value={form.origin} onChange={setE("origin")} style={MODAL_INPUT_STYLE}>
                   {CITIES.map(c => <option key={c}>{c}</option>)}
                 </select>
-              </F>
-              <F label="Destination City">
-                <select value={form.destination} onChange={setE("destination")} style={iS}>
+              </ModalField>
+              <ModalField label="Destination City">
+                <select value={form.destination} onChange={setE("destination")} style={MODAL_INPUT_STYLE}>
                   {CITIES.map(c => <option key={c}>{c}</option>)}
                 </select>
-              </F>
+              </ModalField>
               {form.origin === form.destination && (
                 <div style={{ gridColumn: "span 2", fontFamily: "Rajdhani", fontSize: 13, color: "#dc2626" }}>⚠ Origin and destination cannot be the same</div>
               )}
-              <F label="Cargo Type">
-                <select value={form.type} onChange={setE("type")} style={iS}>
+              <ModalField label="Cargo Type">
+                <select value={form.type} onChange={setE("type")} style={MODAL_INPUT_STYLE}>
                   {CARGO_TYPES.map(t => <option key={t}>{t}</option>)}
                 </select>
-              </F>
-              <F label="Delivery Deadline">
-                <input type="date" value={form.deadline} onChange={setE("deadline")} style={iS} />
-              </F>
-              <F label="Base Rate (₹)" >
-                <input type="number" placeholder="e.g. 55000" value={form.baseRate} onChange={setE("baseRate")} style={iS} />
-              </F>
-              <F label="Bidding Window">
-                <select value={form.timer} onChange={setE("timer")} style={{ ...iS, cursor: "pointer" }}>
+              </ModalField>
+              <ModalField label="Delivery Deadline">
+                <input type="date" value={form.deadline} onChange={setE("deadline")} style={MODAL_INPUT_STYLE} />
+              </ModalField>
+              <ModalField label="Base Rate (₹)" >
+                <input type="number" placeholder="e.g. 55000" value={form.baseRate} onChange={setE("baseRate")} style={MODAL_INPUT_STYLE} />
+              </ModalField>
+              <ModalField label="Bidding Window">
+                <select value={form.timer} onChange={setE("timer")} style={{ ...MODAL_INPUT_STYLE, cursor: "pointer" }}>
                   <option value="120">2 minutes</option>
                   <option value="300">5 minutes</option>
                   <option value="600">10 minutes</option>
                   <option value="1800">30 minutes</option>
                   <option value="3600">1 hour</option>
                 </select>
-              </F>
-              <F label="Cargo Description" span>
+              </ModalField>
+              <ModalField label="Cargo Description" span>
                 <textarea
                   placeholder="Describe the cargo in detail — what it is, condition, any relevant info for the carrier. e.g. 'Mixed FMCG goods including dry groceries and household items, factory-sealed cartons, ready for dispatch from Nhava Sheva warehouse.'"
                   value={form.description}
                   onChange={setE("description")}
                   style={{ ...taS, minHeight: 90 }}
                 />
-              </F>
+              </ModalField>
             </div>
           )}
 
           {/* ── STEP 2: Weight & Dimensions ── */}
           {step === 2 && (
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, paddingBottom: 8 }}>
-              <F label="Gross Weight (kg)">
-                <input type="number" placeholder="e.g. 18500" value={form.grossWeight} onChange={setE("grossWeight")} style={iS} />
-              </F>
-              <F label="Net Weight (kg)">
-                <input type="number" placeholder="e.g. 17200" value={form.netWeight} onChange={setE("netWeight")} style={iS} />
-              </F>
-              <F label="Volume (CBM)">
-                <input type="number" placeholder="e.g. 62" value={form.volume} onChange={setE("volume")} style={iS} />
-              </F>
-              <F label="No. of Pieces / Units">
-                <input type="number" placeholder="e.g. 240" value={form.pieces} onChange={setE("pieces")} style={iS} />
-              </F>
-              <F label="Length (m)">
-                <input type="number" step="0.1" placeholder="e.g. 12.2" value={form.length} onChange={setE("length")} style={iS} />
-              </F>
-              <F label="Width (m)">
-                <input type="number" step="0.1" placeholder="e.g. 2.4" value={form.width} onChange={setE("width")} style={iS} />
-              </F>
-              <F label="Height (m)">
-                <input type="number" step="0.1" placeholder="e.g. 2.6" value={form.height} onChange={setE("height")} style={iS} />
-              </F>
-              <F label="Packaging Type">
-                <select value={form.packaging} onChange={setE("packaging")} style={iS}>
+              <ModalField label="Gross Weight (kg)">
+                <input type="number" placeholder="e.g. 18500" value={form.grossWeight} onChange={setE("grossWeight")} style={MODAL_INPUT_STYLE} />
+              </ModalField>
+              <ModalField label="Net Weight (kg)">
+                <input type="number" placeholder="e.g. 17200" value={form.netWeight} onChange={setE("netWeight")} style={MODAL_INPUT_STYLE} />
+              </ModalField>
+              <ModalField label="Volume (CBM)">
+                <input type="number" placeholder="e.g. 62" value={form.volume} onChange={setE("volume")} style={MODAL_INPUT_STYLE} />
+              </ModalField>
+              <ModalField label="No. of Pieces / Units">
+                <input type="number" placeholder="e.g. 240" value={form.pieces} onChange={setE("pieces")} style={MODAL_INPUT_STYLE} />
+              </ModalField>
+              <ModalField label="Length (m)">
+                <input type="number" step="0.1" placeholder="e.g. 12.2" value={form.length} onChange={setE("length")} style={MODAL_INPUT_STYLE} />
+              </ModalField>
+              <ModalField label="Width (m)">
+                <input type="number" step="0.1" placeholder="e.g. 2.4" value={form.width} onChange={setE("width")} style={MODAL_INPUT_STYLE} />
+              </ModalField>
+              <ModalField label="Height (m)">
+                <input type="number" step="0.1" placeholder="e.g. 2.6" value={form.height} onChange={setE("height")} style={MODAL_INPUT_STYLE} />
+              </ModalField>
+              <ModalField label="Packaging Type">
+                <select value={form.packaging} onChange={setE("packaging")} style={MODAL_INPUT_STYLE}>
                   {["Palletised (HDPE wrapped)","Insulated Crates","Loose / Break Bulk","Drums","Bags / Sacks","Boxes / Cartons","IBC Tanks","Customised Crating"].map(p => <option key={p}>{p}</option>)}
                 </select>
-              </F>
+              </ModalField>
             </div>
           )}
 
           {/* ── STEP 3: Handling & Requirements ── */}
           {step === 3 && (
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, paddingBottom: 8 }}>
-              <F label="Vehicle Type Required" span>
-                <select value={form.vehicleType} onChange={setE("vehicleType")} style={iS}>
+              <ModalField label="Vehicle Type Required" span>
+                <select value={form.vehicleType} onChange={setE("vehicleType")} style={MODAL_INPUT_STYLE}>
                   {["32 ft Container / Multi-axle","20 ft Reefer Container","Flatbed Trailer / Open Body","Mini Truck (1-2T)","LCV (3-5T)","HCV (10-15T)","Tanker","Tipper","Any"].map(v => <option key={v}>{v}</option>)}
                 </select>
-              </F>
-              <F label="Loading Method">
-                <select value={form.loadingType} onChange={setE("loadingType")} style={iS}>
+              </ModalField>
+              <ModalField label="Loading Method">
+                <select value={form.loadingType} onChange={setE("loadingType")} style={MODAL_INPUT_STYLE}>
                   {["Dock Loading","Ground Level Loading","Crane Loading","Forklift Loading","Manual Loading"].map(v => <option key={v}>{v}</option>)}
                 </select>
-              </F>
-              <F label="Unloading Method">
-                <select value={form.unloadingType} onChange={setE("unloadingType")} style={iS}>
+              </ModalField>
+              <ModalField label="Unloading Method">
+                <select value={form.unloadingType} onChange={setE("unloadingType")} style={MODAL_INPUT_STYLE}>
                   {["Dock Unloading","Ground Level Unloading","Crane Unloading","Cold Storage Dock","Forklift Unloading","Manual Unloading"].map(v => <option key={v}>{v}</option>)}
                 </select>
-              </F>
+              </ModalField>
 
               {/* Flags */}
               <div style={{ gridColumn: "span 2" }}>
-                <Lbl>Cargo Flags</Lbl>
+                <ModalLbl>Cargo Flags</ModalLbl>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                  <Toggle label="Hazardous" field="hazardous" icon="⚠" />
-                  <Toggle label="Fragile" field="fragile" icon="🔸" />
-                  <Toggle label="Stackable" field="stackable" icon="📚" />
-                  <Toggle label="Temperature Controlled" field="tempControlled" icon="❄" />
+                  {[
+                    { label: "Hazardous", field: "hazardous", icon: "⚠" },
+                    { label: "Fragile", field: "fragile", icon: "🔸" },
+                    { label: "Stackable", field: "stackable", icon: "📚" },
+                    { label: "Temperature Controlled", field: "tempControlled", icon: "❄" },
+                  ].map(({ label, field, icon }) => (
+                    <div key={field} onClick={() => toggle(field)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", borderRadius: 8, border: `1px solid ${form[field] ? "rgba(220,38,38,0.3)" : "#e5e7eb"}`, background: form[field] ? "rgba(220,38,38,0.05)" : "#fff", cursor: "pointer", userSelect: "none" }}>
+                      <div style={{ width: 18, height: 18, borderRadius: 4, background: form[field] ? "#dc2626" : "#e5e7eb", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 11, color: "#fff", fontWeight: 700 }}>{form[field] ? "✓" : ""}</div>
+                      <span style={{ fontFamily: "Rajdhani", fontWeight: 600, fontSize: 13, color: form[field] ? "#dc2626" : "#6b7280" }}>{icon} {label}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
 
               {form.tempControlled && (
-                <F label="Temperature Range" span>
-                  <input placeholder="e.g. 2°C – 8°C (Refrigerated)" value={form.tempRange} onChange={setE("tempRange")} style={iS} />
-                </F>
+                <ModalField label="Temperature Range" span>
+                  <input placeholder="e.g. 2°C – 8°C (Refrigerated)" value={form.tempRange} onChange={setE("tempRange")} style={MODAL_INPUT_STYLE} />
+                </ModalField>
               )}
 
-              <F label="Special Instructions / Remarks" span>
-                <textarea placeholder="e.g. Secure strapping required. No stacking above 2 layers. Escort vehicle mandatory on NH-48." value={form.specialInstructions} onChange={setE("specialInstructions")} style={taS} />
-              </F>
+              <ModalField label="Special Instructions / Remarks" span>
+                <textarea placeholder="e.g. Secure strapping required. No stacking above 2 layers. Escort vehicle mandatory on NH-48." value={form.specialInstructions} onChange={setE("specialInstructions")} style={MODAL_TA_STYLE} />
+              </ModalField>
             </div>
           )}
 
@@ -600,18 +599,18 @@ function PostCargoModal({ onClose, onPost }) {
           {step === 4 && (
             <div style={{ paddingBottom: 8 }}>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 16 }}>
-                <F label="Company / Organisation" span>
-                  <input placeholder="e.g. Ramnath Industries Pvt. Ltd." value={form.postedBy} onChange={setE("postedBy")} style={iS} />
-                </F>
-                <F label="Contact Person">
-                  <input placeholder="e.g. Ankit Sharma" value={form.contactPerson} onChange={setE("contactPerson")} style={iS} />
-                </F>
-                <F label="Phone Number">
-                  <input placeholder="+91 98100 23456" value={form.phone} onChange={setE("phone")} style={iS} />
-                </F>
-                <F label="Cargo Insurance Value (₹)" span>
-                  <input type="number" placeholder="e.g. 1850000" value={form.insurance} onChange={setE("insurance")} style={iS} />
-                </F>
+                <ModalField label="Company / Organisation" span>
+                  <input placeholder="e.g. Ramnath Industries Pvt. Ltd." value={form.postedBy} onChange={setE("postedBy")} style={MODAL_INPUT_STYLE} />
+                </ModalField>
+                <ModalField label="Contact Person">
+                  <input placeholder="e.g. Ankit Sharma" value={form.contactPerson} onChange={setE("contactPerson")} style={MODAL_INPUT_STYLE} />
+                </ModalField>
+                <ModalField label="Phone Number">
+                  <input placeholder="+91 98100 23456" value={form.phone} onChange={setE("phone")} style={MODAL_INPUT_STYLE} />
+                </ModalField>
+                <ModalField label="Cargo Insurance Value (₹)" span>
+                  <input type="number" placeholder="e.g. 1850000" value={form.insurance} onChange={setE("insurance")} style={MODAL_INPUT_STYLE} />
+                </ModalField>
               </div>
 
               {/* Summary */}
