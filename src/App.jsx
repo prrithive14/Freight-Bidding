@@ -458,42 +458,269 @@ function BidChart({ bids, baseRate }) {
   );
 }
 
+// ─── AWARD CONFIRM MODAL ─────────────────────────────────────────────────────
+
+function AwardConfirmModal({ bid, cargo, onConfirm, onCancel }) {
+  const p = CARRIER_PROFILES[bid.carrier] || {};
+  const savings = cargo.baseRate - bid.amount;
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 900, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }} onClick={onCancel}>
+      <div onClick={e => e.stopPropagation()} style={{ width: 460, background: "#ffffff", border: "1px solid rgba(0,0,0,0.1)", borderRadius: 20, padding: "28px", boxShadow: "0 32px 80px rgba(0,0,0,0.25)", animation: "slideDown 0.25s ease" }}>
+        <div style={{ textAlign: "center", marginBottom: 22 }}>
+          <div style={{ fontSize: 40, marginBottom: 10 }}>🏆</div>
+          <div style={{ fontFamily: "Syne", fontWeight: 800, fontSize: 22, color: "#111827", marginBottom: 6 }}>Award this bid?</div>
+          <div style={{ fontFamily: "Rajdhani", fontSize: 15, color: "#6b7280" }}>This will close bidding on {cargo.id} and notify the carrier immediately.</div>
+        </div>
+        <div style={{ background: "#fdf2f2", border: "1.5px solid rgba(220,38,38,0.25)", borderRadius: 14, padding: "18px 20px", marginBottom: 20 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 14 }}>
+            <div style={{ width: 46, height: 46, borderRadius: 12, background: "rgba(220,38,38,0.12)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "Syne", fontWeight: 800, fontSize: 20, color: "#dc2626" }}>{bid.carrier[0]}</div>
+            <div>
+              <div style={{ fontFamily: "Syne", fontWeight: 700, fontSize: 17, color: "#111827" }}>{bid.carrier}</div>
+              <div style={{ fontFamily: "JetBrains Mono", fontSize: 12, color: "#6b7280" }}>★ {p.rating || "—"} · {p.onTime || "—"}% on-time · {p.trips || "—"} trips</div>
+            </div>
+            {p.badge && <Pill color={p.badge === "Top Rated" ? "#dc2626" : p.badge === "Premium" ? "#a78bfa" : "#16a34a"}>{p.badge}</Pill>}
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+            {[
+              { label: "Bid Amount", val: formatINR(bid.amount), accent: "#dc2626" },
+              { label: "Base Rate",  val: formatINR(cargo.baseRate), accent: "#6b7280" },
+              { label: "You Save",   val: formatINR(savings), accent: "#16a34a" },
+            ].map(({ label, val, accent }) => (
+              <div key={label} style={{ textAlign: "center" }}>
+                <div style={{ fontFamily: "Rajdhani", fontSize: 11, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 4 }}>{label}</div>
+                <div style={{ fontFamily: "JetBrains Mono", fontWeight: 700, fontSize: 16, color: accent }}>{val}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div style={{ fontFamily: "Rajdhani", fontSize: 13, color: "#9ca3af", textAlign: "center", marginBottom: 18 }}>
+          {cargo.origin} → {cargo.destination} · {cargo.weight} · {cargo.distance}
+        </div>
+        <div style={{ display: "flex", gap: 10 }}>
+          <button onClick={onCancel} style={{ flex: 1, padding: "12px", borderRadius: 10, border: "1px solid rgba(0,0,0,0.1)", background: "transparent", color: "#6b7280", fontFamily: "Rajdhani", fontWeight: 700, fontSize: 15, cursor: "pointer" }}>Cancel</button>
+          <button onClick={onConfirm} style={{ flex: 2, padding: "12px", borderRadius: 10, border: "none", cursor: "pointer", background: "linear-gradient(135deg, #dc2626, #b91c1c)", color: "#fff", fontFamily: "Syne", fontWeight: 800, fontSize: 15 }}>Confirm Award →</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── SHIPMENT VIEW ────────────────────────────────────────────────────────────
+
+const TRACK_STEPS = ["Booked", "Picked Up", "In Transit", "Out for Del.", "Delivered"];
+
+function ShipmentView({ cargo, onBack }) {
+  const ab = cargo.awardedBid;
+  const p = CARRIER_PROFILES[ab?.carrier] || {};
+  const savings = cargo.baseRate - ab?.amount;
+  const freight = ab?.amount || 0;
+  const platformFee = Math.round(freight * 0.02);
+  const gst = Math.round((freight + platformFee) * 0.18);
+  const total = freight + platformFee + gst;
+  const [chatInput, setChatInput] = useState("");
+  const [messages, setMessages] = useState([
+    { from: "carrier", text: "Cargo loaded and sealed. Departing at 2:45 PM.", time: "2:44 PM" },
+    { from: "me", text: "Thanks! Please share checkpoint updates every 4 hours.", time: "2:46 PM" },
+    { from: "carrier", text: "Sure, will do. Next update from Vadodara toll at ~7 PM.", time: "2:48 PM" },
+  ]);
+  const sendMsg = () => {
+    if (!chatInput.trim()) return;
+    setMessages(m => [...m, { from: "me", text: chatInput.trim(), time: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }) }]);
+    setChatInput("");
+  };
+
+  const TIMELINE = [
+    { label: "Cargo posted on exchange", sub: `${cargo.id} · ${cargo.origin}`, done: true },
+    { label: "Bidding closed", sub: `${cargo.bids.length} bids received`, done: true },
+    { label: `Bid awarded to ${ab?.carrier}`, sub: `${formatINR(ab?.amount)} · Saved ${formatINR(savings)}`, done: true },
+    { label: "Advance payment confirmed (30%)", sub: formatINR(Math.round(total * 0.3)), done: true },
+    { label: "Cargo picked up", sub: `${cargo.origin} depot`, done: true },
+    { label: "In transit", sub: "NH-48, Surat bypass · 847 km remaining", active: true },
+    { label: "Out for delivery", sub: "Pending", done: false },
+    { label: "Delivered & POD collected", sub: `Est. ${cargo.deadline}`, done: false },
+  ];
+
+  const cS = { background: "#ffffff", border: "1px solid rgba(0,0,0,0.08)", borderRadius: 14, padding: "18px 20px", marginBottom: 14 };
+  const lS = { fontFamily: "Rajdhani", fontSize: 11, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 6 };
+
+  return (
+    <div style={{ flex: 1, overflowY: "auto", padding: "24px 28px", background: "#f9fafb", animation: "fadeIn 0.3s ease" }}>
+      {/* Header */}
+      <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 20, flexWrap: "wrap" }}>
+        <button onClick={onBack} style={{ padding: "7px 14px", borderRadius: 8, border: "1px solid rgba(0,0,0,0.1)", background: "#fff", color: "#6b7280", fontFamily: "Rajdhani", fontWeight: 700, fontSize: 14, cursor: "pointer" }}>← Back</button>
+        <div style={{ flex: 1 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
+            <span style={{ fontFamily: "JetBrains Mono", fontSize: 12, color: "#dc2626" }}>{cargo.id}</span>
+            <Pill color="#2563eb">In Transit</Pill>
+          </div>
+          <div style={{ fontFamily: "Syne", fontWeight: 800, fontSize: 22, color: "#111827", letterSpacing: "-0.02em" }}>{cargo.origin} <span style={{ color: "#d1d5db" }}>→</span> {cargo.destination}</div>
+          <div style={{ fontFamily: "Rajdhani", fontSize: 14, color: "#6b7280" }}>{cargo.weight} · {cargo.type} · Est. delivery {cargo.deadline}</div>
+        </div>
+        <div style={{ textAlign: "right" }}>
+          <div style={lS}>Awarded to</div>
+          <div style={{ fontFamily: "Syne", fontWeight: 700, fontSize: 16, color: "#dc2626" }}>{ab?.carrier}</div>
+          <div style={{ fontFamily: "JetBrains Mono", fontSize: 12, color: "#6b7280" }}>Winning bid: <strong>{formatINR(ab?.amount)}</strong> · Saved {formatINR(savings)}</div>
+        </div>
+      </div>
+
+      {/* Tracking bar */}
+      <div style={cS}>
+        <div style={lS}>Shipment tracking</div>
+        <div style={{ display: "flex", alignItems: "flex-start", marginTop: 14 }}>
+          {TRACK_STEPS.map((step, i) => {
+            const done = i < 2; const active = i === 2;
+            return (
+              <div key={step} style={{ display: "flex", alignItems: "center", flex: 1 }}>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 5 }}>
+                  <div style={{ width: 30, height: 30, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "JetBrains Mono", fontWeight: 700, fontSize: 12, background: done ? "#dc2626" : active ? "#fee2e2" : "rgba(0,0,0,0.05)", color: done ? "#fff" : active ? "#dc2626" : "#9ca3af", border: active ? "2px solid #dc2626" : "none" }}>
+                    {done ? "✓" : i + 1}
+                  </div>
+                  <div style={{ fontFamily: "Rajdhani", fontWeight: 600, fontSize: 11, color: done || active ? "#dc2626" : "#9ca3af", textAlign: "center", whiteSpace: "nowrap" }}>{step}</div>
+                </div>
+                {i < TRACK_STEPS.length - 1 && <div style={{ flex: 1, height: 2, background: i < 2 ? "#dc2626" : "rgba(0,0,0,0.08)", marginBottom: 18 }} />}
+              </div>
+            );
+          })}
+        </div>
+        <div style={{ marginTop: 14, background: "#fdf2f2", border: "1px solid rgba(220,38,38,0.15)", borderRadius: 10, padding: "10px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#dc2626" }} />
+            <span style={{ fontFamily: "Rajdhani", fontWeight: 600, fontSize: 14, color: "#111827" }}>Last seen: NH-48, Surat bypass</span>
+          </div>
+          <span style={{ fontFamily: "JetBrains Mono", fontSize: 11, color: "#9ca3af" }}>Updated 4 min ago · 847 km remaining</span>
+        </div>
+      </div>
+
+      {/* Carrier + Payment */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+        <div style={cS}>
+          <div style={lS}>Carrier details</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "12px 0 14px" }}>
+            <div style={{ width: 42, height: 42, borderRadius: "50%", background: "#fee2e2", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "Syne", fontWeight: 800, fontSize: 16, color: "#dc2626" }}>{ab?.carrier[0]}</div>
+            <div>
+              <div style={{ fontFamily: "Rajdhani", fontWeight: 700, fontSize: 15, color: "#111827" }}>{ab?.carrier}</div>
+              <div style={{ fontFamily: "JetBrains Mono", fontSize: 11, color: "#9ca3af" }}>★ {p.rating} · {p.trips} trips · {p.region}</div>
+            </div>
+          </div>
+          {[{ label: "Driver", val: "Ramesh Kumar" }, { label: "Truck No.", val: "MH 04 AX 7823" }, { label: "Vehicle", val: "32 ft Container" }, { label: "Contact", val: "+91 98201 44321", red: true }].map(({ label, val, red }) => (
+            <div key={label} style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid rgba(0,0,0,0.05)" }}>
+              <span style={{ fontFamily: "Rajdhani", fontSize: 13, color: "#9ca3af" }}>{label}</span>
+              <span style={{ fontFamily: "Rajdhani", fontWeight: 600, fontSize: 13, color: red ? "#dc2626" : "#1f2937" }}>{val}</span>
+            </div>
+          ))}
+        </div>
+
+        <div style={cS}>
+          <div style={lS}>Payment summary</div>
+          <div style={{ marginTop: 12 }}>
+            {[{ label: "Freight charge", val: formatINR(freight) }, { label: "Platform fee (2%)", val: formatINR(platformFee) }, { label: "GST (18%)", val: formatINR(gst) }].map(({ label, val }) => (
+              <div key={label} style={{ display: "flex", justifyContent: "space-between", padding: "7px 0", borderBottom: "1px solid rgba(0,0,0,0.05)" }}>
+                <span style={{ fontFamily: "Rajdhani", fontSize: 13, color: "#6b7280" }}>{label}</span>
+                <span style={{ fontFamily: "JetBrains Mono", fontSize: 13, color: "#374151" }}>{val}</span>
+              </div>
+            ))}
+            <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", marginBottom: 12 }}>
+              <span style={{ fontFamily: "Syne", fontWeight: 700, fontSize: 15, color: "#111827" }}>Total</span>
+              <span style={{ fontFamily: "JetBrains Mono", fontWeight: 700, fontSize: 15, color: "#111827" }}>{formatINR(total)}</span>
+            </div>
+            {[{ label: `Advance (30%) — ${formatINR(Math.round(total*0.3))}`, status: "Paid ✓", green: true }, { label: `Balance on delivery — ${formatINR(Math.round(total*0.7))}`, status: "Pending", green: false }].map(({ label, status, green }) => (
+              <div key={label} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                <span style={{ fontFamily: "Rajdhani", fontSize: 12, color: "#6b7280" }}>{label}</span>
+                <span style={{ fontFamily: "Rajdhani", fontWeight: 700, fontSize: 11, padding: "3px 10px", borderRadius: 20, background: green ? "rgba(22,163,74,0.1)" : "rgba(234,179,8,0.1)", color: green ? "#16a34a" : "#a16207", border: `1px solid ${green ? "rgba(22,163,74,0.25)" : "rgba(234,179,8,0.25)"}` }}>{status}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Activity + Chat */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginTop: 14 }}>
+        <div style={cS}>
+          <div style={lS}>Activity log</div>
+          <div style={{ marginTop: 12 }}>
+            {TIMELINE.map((item, i) => (
+              <div key={i} style={{ display: "flex", gap: 12, paddingBottom: 14, position: "relative" }}>
+                {i < TIMELINE.length - 1 && <div style={{ position: "absolute", left: 11, top: 24, bottom: 0, width: 1, background: "rgba(0,0,0,0.07)" }} />}
+                <div style={{ width: 24, height: 24, borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, background: item.done ? "#fee2e2" : item.active ? "#fef9c3" : "rgba(0,0,0,0.05)", color: item.done ? "#dc2626" : item.active ? "#a16207" : "#9ca3af", fontWeight: 700 }}>{item.done ? "✓" : item.active ? "▶" : "○"}</div>
+                <div>
+                  <div style={{ fontFamily: "Rajdhani", fontWeight: 600, fontSize: 13, color: item.done || item.active ? "#1f2937" : "#9ca3af" }}>{item.label}</div>
+                  <div style={{ fontFamily: "JetBrains Mono", fontSize: 10, color: "#9ca3af" }}>{item.sub}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ ...cS, display: "flex", flexDirection: "column" }}>
+          <div style={lS}>Message carrier</div>
+          <div style={{ flex: 1, overflowY: "auto", maxHeight: 240, display: "flex", flexDirection: "column", gap: 8, margin: "10px 0" }}>
+            {messages.map((m, i) => (
+              <div key={i} style={{ alignSelf: m.from === "me" ? "flex-end" : "flex-start", maxWidth: "82%" }}>
+                <div style={{ padding: "9px 13px", borderRadius: m.from === "me" ? "12px 12px 4px 12px" : "12px 12px 12px 4px", background: m.from === "me" ? "#dc2626" : "rgba(0,0,0,0.05)", color: m.from === "me" ? "#fff" : "#1f2937", fontFamily: "Rajdhani", fontSize: 13, lineHeight: 1.5 }}>{m.text}</div>
+                <div style={{ fontFamily: "JetBrains Mono", fontSize: 10, color: "#9ca3af", marginTop: 3, textAlign: m.from === "me" ? "right" : "left" }}>{m.time}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{ display: "flex", gap: 8, borderTop: "1px solid rgba(0,0,0,0.07)", paddingTop: 12 }}>
+            <input value={chatInput} onChange={e => setChatInput(e.target.value)} onKeyDown={e => e.key === "Enter" && sendMsg()} placeholder="Type a message…" style={{ flex: 1, padding: "9px 12px", borderRadius: 8, border: "1px solid rgba(0,0,0,0.09)", background: "#fff", fontFamily: "Rajdhani", fontSize: 14, color: "#1f2937", outline: "none" }} />
+            <button onClick={sendMsg} style={{ padding: "9px 16px", borderRadius: 8, border: "none", background: "#dc2626", color: "#fff", fontFamily: "Rajdhani", fontWeight: 700, fontSize: 14, cursor: "pointer" }}>Send</button>
+          </div>
+        </div>
+      </div>
+
+      {/* Documents */}
+      <div style={{ ...cS, marginTop: 14 }}>
+        <div style={lS}>Documents</div>
+        {[
+          { icon: "📄", name: "Booking Confirmation", sub: "PDF · Generated today", ready: true },
+          { icon: "📋", name: "Bill of Lading (e-BoL)", sub: "PDF · Signed by carrier", ready: true },
+          { icon: "🧾", name: "Tax Invoice", sub: "Generated on delivery", ready: false },
+          { icon: "✅", name: "Proof of Delivery (POD)", sub: "Available after delivery", ready: false },
+        ].map(({ icon, name, sub, ready }) => (
+          <div key={name} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "11px 0", borderBottom: "1px solid rgba(0,0,0,0.06)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div style={{ width: 34, height: 34, borderRadius: 9, background: ready ? "#fee2e2" : "rgba(0,0,0,0.05)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>{icon}</div>
+              <div>
+                <div style={{ fontFamily: "Rajdhani", fontWeight: 600, fontSize: 14, color: "#1f2937" }}>{name}</div>
+                <div style={{ fontFamily: "JetBrains Mono", fontSize: 10, color: "#9ca3af" }}>{sub}</div>
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <span style={{ fontFamily: "Rajdhani", fontWeight: 700, fontSize: 11, padding: "3px 10px", borderRadius: 20, background: ready ? "rgba(22,163,74,0.1)" : "rgba(234,179,8,0.1)", color: ready ? "#16a34a" : "#a16207", border: `1px solid ${ready ? "rgba(22,163,74,0.25)" : "rgba(234,179,8,0.25)"}` }}>{ready ? "Ready" : "Pending"}</span>
+              <button disabled={!ready} style={{ padding: "6px 14px", borderRadius: 7, border: "1px solid rgba(0,0,0,0.1)", background: ready ? "#fff" : "rgba(0,0,0,0.03)", color: ready ? "#374151" : "#d1d5db", fontFamily: "Rajdhani", fontWeight: 600, fontSize: 13, cursor: ready ? "pointer" : "not-allowed" }}>Download</button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ─── BID ROW ─────────────────────────────────────────────────────────────────
 
-function BidRow({ bid, isWinner, rank, onViewProfile }) {
+function BidRow({ bid, isWinner, rank, onViewProfile, onAward, canAward }) {
   const p = CARRIER_PROFILES[bid.carrier];
   return (
-    <div style={{
-      display: "flex", alignItems: "center", justifyContent: "space-between",
-      padding: "11px 14px",
-      background: isWinner ? "rgba(220,38,38,0.08)" : "rgba(0,0,0,0.03)",
-      borderRadius: 8, border: isWinner ? "1px solid rgba(220,38,38,0.35)" : "1px solid rgba(0,0,0,0.05)",
-      marginBottom: 6,
-    }}>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "11px 14px", background: isWinner ? "rgba(220,38,38,0.08)" : "rgba(0,0,0,0.03)", borderRadius: 8, border: isWinner ? "1px solid rgba(220,38,38,0.35)" : "1px solid rgba(0,0,0,0.05)", marginBottom: 6 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <div style={{
-          width: 28, height: 28, borderRadius: 8, background: isWinner ? "rgba(220,38,38,0.2)" : "rgba(0,0,0,0.05)",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          fontFamily: "JetBrains Mono", fontWeight: 700, fontSize: 12, color: isWinner ? "#dc2626" : "#d1d5db",
-        }}>#{rank}</div>
+        <div style={{ width: 28, height: 28, borderRadius: 8, background: isWinner ? "rgba(220,38,38,0.2)" : "rgba(0,0,0,0.05)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "JetBrains Mono", fontWeight: 700, fontSize: 12, color: isWinner ? "#dc2626" : "#d1d5db" }}>#{rank}</div>
         <div>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <span style={{ fontFamily: "Rajdhani", fontWeight: 700, color: isWinner ? "#dc2626" : "#374151", fontSize: 14 }}>{bid.carrier}</span>
-            {p?.badge && <Pill color={p.badge === "Top Rated" ? "#dc2626" : p.badge === "Premium" ? "#a78bfa" : "#34d399"} >{p.badge}</Pill>}
+            {p?.badge && <Pill color={p.badge === "Top Rated" ? "#dc2626" : p.badge === "Premium" ? "#a78bfa" : "#16a34a"}>{p.badge}</Pill>}
           </div>
-          <div style={{ fontFamily: "JetBrains Mono", fontSize: 10, color: "#9ca3af" }}>★ {p?.rating || "—"} · {bid.time}</div>
+          <div style={{ fontFamily: "JetBrains Mono", fontSize: 10, color: "#9ca3af" }}>★ {p?.rating || "—"} · {p?.onTime || "—"}% on-time · {bid.time}</div>
         </div>
       </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        {isWinner && <span style={{ fontSize: 14 }}>🏆</span>}
-        <div style={{ fontFamily: "JetBrains Mono", fontWeight: 700, color: isWinner ? "#dc2626" : "#4b5563", fontSize: 15, textAlign: "right" }}>
-          {formatINR(bid.amount)}
-        </div>
-        <button onClick={() => onViewProfile(bid.carrier)} style={{
-          background: "rgba(0,0,0,0.05)", border: "1px solid rgba(0,0,0,0.09)",
-          borderRadius: 6, padding: "4px 8px", cursor: "pointer",
-          fontFamily: "Rajdhani", fontWeight: 600, fontSize: 11, color: "#9ca3af",
-        }}>Profile</button>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        {isWinner && <span>🏆</span>}
+        <div style={{ fontFamily: "JetBrains Mono", fontWeight: 700, color: isWinner ? "#dc2626" : "#374151", fontSize: 15 }}>{formatINR(bid.amount)}</div>
+        <button onClick={() => onViewProfile(bid.carrier)} style={{ background: "rgba(0,0,0,0.04)", border: "1px solid rgba(0,0,0,0.08)", borderRadius: 6, padding: "4px 9px", cursor: "pointer", fontFamily: "Rajdhani", fontWeight: 600, fontSize: 11, color: "#9ca3af" }}>Profile</button>
+        {canAward && (
+          <button onClick={() => onAward(bid)} style={{ background: "linear-gradient(135deg, #dc2626, #b91c1c)", border: "none", borderRadius: 7, padding: "6px 13px", cursor: "pointer", fontFamily: "Rajdhani", fontWeight: 700, fontSize: 12, color: "#fff", whiteSpace: "nowrap" }}>
+            Award →
+          </button>
+        )}
       </div>
     </div>
   );
@@ -520,6 +747,8 @@ function CargoCard({ cargo, onSelect, selected }) {
           ? <span style={{ display: "flex", alignItems: "center", gap: 5, color: "#dc2626", fontFamily: "Rajdhani", fontWeight: 700, fontSize: 12 }}>
               <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#dc2626", boxShadow: "0 0 8px #dc2626", animation: "pulse 1.5s infinite", display: "inline-block" }} />LIVE
             </span>
+          : cargo.status === "awarded"
+          ? <span style={{ color: "#16a34a", fontFamily: "Rajdhani", fontWeight: 700, fontSize: 12 }}>✓ AWARDED</span>
           : <span style={{ color: "#d1d5db", fontFamily: "Rajdhani", fontWeight: 600, fontSize: 12 }}>CLOSED</span>
         }
       </div>
@@ -550,9 +779,23 @@ export default function App() {
   const [showNotifs, setShowNotifs] = useState(false);
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
+  const [awardConfirm, setAwardConfirm] = useState(null); // { bid, cargo }
+  const [shipmentViewId, setShipmentViewId] = useState(null);
 
   const selected = cargos.find(c => c.id === selectedId);
   const unread = notifs.filter(n => !n.read).length;
+
+  const confirmAward = () => {
+    const { bid, cargo } = awardConfirm;
+    setCargos(prev => prev.map(c => c.id === cargo.id
+      ? { ...c, status: "awarded", timer: 0, awardedBid: bid }
+      : c
+    ));
+    setNotifs(n => [{ id: ++_notifId, type: "winner", msg: `${cargo.id} awarded to ${bid.carrier} for ${formatINR(bid.amount)}`, time: "Just now", read: false }, ...n]);
+    showToast(`Awarded to ${bid.carrier}!`);
+    setAwardConfirm(null);
+    setShipmentViewId(cargo.id);
+  };
 
   // Countdown timers
   useEffect(() => {
@@ -639,6 +882,9 @@ export default function App() {
 
       {/* Post Cargo Modal */}
       {showPostModal && <PostCargoModal onClose={() => setShowPostModal(false)} onPost={handlePost} />}
+
+      {/* Award Confirm Modal */}
+      {awardConfirm && <AwardConfirmModal bid={awardConfirm.bid} cargo={awardConfirm.cargo} onConfirm={confirmAward} onCancel={() => setAwardConfirm(null)} />}
 
       <div style={{ minHeight: "100vh", background: "#ffffff", display: "flex", flexDirection: "column" }}>
         {/* ── HEADER ── */}
@@ -728,6 +974,12 @@ export default function App() {
           </div>
 
           {/* ── RIGHT PANEL ── */}
+          {shipmentViewId && cargos.find(c => c.id === shipmentViewId) ? (
+            <ShipmentView
+              cargo={cargos.find(c => c.id === shipmentViewId)}
+              onBack={() => { setShipmentViewId(null); setSelectedId(shipmentViewId); }}
+            />
+          ) : (
           <div style={{ flex: 1, overflowY: "auto", padding: "24px 28px" }}>
             {selected && (
               <div style={{ animation: "fadeIn 0.3s ease" }}>
@@ -739,6 +991,7 @@ export default function App() {
                         <div style={{ fontFamily: "JetBrains Mono", fontSize: 12, color: "#dc2626" }}>{selected.id}</div>
                         {selected.status === "live"
                           ? <Pill color="#dc2626">Live</Pill>
+                          : selected.status === "awarded" ? <Pill color="#16a34a">Awarded</Pill>
                           : <Pill color="#9ca3af">Closed</Pill>}
                         <Pill color="#60a5fa">{selected.type}</Pill>
                       </div>
@@ -812,7 +1065,14 @@ export default function App() {
                       <div style={{ textAlign: "center", padding: "32px 0", color: "#e5e7eb", fontFamily: "Rajdhani", fontSize: 14 }}>No bids yet</div>
                     ) : (
                       sortedBids.map((bid, i) => (
-                        <BidRow key={i} bid={bid} isWinner={i===0 && selected.status==="closed"} rank={i+1} onViewProfile={setProfileCarrier} />
+                        <BidRow
+                          key={i} bid={bid}
+                          isWinner={i === 0 && selected.status === "closed"}
+                          rank={i + 1}
+                          onViewProfile={setProfileCarrier}
+                          canAward={view === "shipper" && selected.status === "live"}
+                          onAward={b => setAwardConfirm({ bid: b, cargo: selected })}
+                        />
                       ))
                     )}
                   </div>
@@ -873,13 +1133,20 @@ export default function App() {
                 )}
 
                 {view === "shipper" && selected.status === "live" && (
-                  <div style={{ textAlign: "center", padding: "20px", background: "rgba(0,0,0,0.03)", border: "1px dashed rgba(0,0,0,0.08)", borderRadius: 12, color: "#e5e7eb", fontFamily: "Rajdhani", fontSize: 14 }}>
-                    Switch to <strong style={{ color: "#dc2626" }}>Carrier View</strong> to place bids
+                  <div style={{ textAlign: "center", padding: "20px", background: "rgba(220,38,38,0.03)", border: "1px dashed rgba(220,38,38,0.15)", borderRadius: 12, fontFamily: "Rajdhani", fontSize: 14, color: "#6b7280" }}>
+                    💡 Click <strong style={{ color: "#dc2626" }}>Award →</strong> on any bid above to select that carrier
                   </div>
+                )}
+
+                {selected.status === "awarded" && (
+                  <button onClick={() => setShipmentViewId(selected.id)} style={{ width: "100%", padding: "14px", borderRadius: 12, border: "none", cursor: "pointer", background: "linear-gradient(135deg, #dc2626, #b91c1c)", color: "#fff", fontFamily: "Syne", fontWeight: 800, fontSize: 16 }}>
+                    View Shipment Tracking →
+                  </button>
                 )}
               </div>
             )}
           </div>
+          )}
         </div>
       </div>
     </>
