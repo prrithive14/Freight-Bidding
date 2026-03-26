@@ -770,34 +770,52 @@ function BidRow({ bid, isWinner, rank, onViewProfile, onAward, canAward, cargoId
 
 function CargoCard({ cargo, onSelect, selected }) {
   const lowestBid = cargo.bids.length ? Math.min(...cargo.bids.map(b => b.amount)) : null;
+  const savings = lowestBid ? cargo.baseRate - lowestBid : 0;
   return (
     <div onClick={() => onSelect(cargo.id)} style={{
-      background: selected ? "rgba(220,38,38,0.06)" : "rgba(0,0,0,0.04)",
-      border: selected ? "1.5px solid rgba(220,38,38,0.5)" : "1.5px solid rgba(0,0,0,0.07)",
-      borderRadius: 14, padding: "16px 18px", cursor: "pointer", transition: "all 0.2s", marginBottom: 10,
+      background: selected ? "#fff" : "#fff",
+      border: selected ? "2px solid #dc2626" : "1px solid rgba(0,0,0,0.08)",
+      borderRadius: 14, padding: "14px 16px", cursor: "pointer",
+      transition: "all 0.15s", marginBottom: 10,
+      boxShadow: selected ? "0 0 0 4px rgba(220,38,38,0.08)" : "none",
     }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
-        <div>
-          <div style={{ fontFamily: "JetBrains Mono", fontSize: 11, color: "#dc2626", marginBottom: 2 }}>{cargo.id}</div>
-          <div style={{ fontFamily: "Rajdhani", fontWeight: 700, fontSize: 16, color: "#1f2937" }}>
-            {cargo.origin.split(",")[0]} → {cargo.destination.split(",")[0]}
-          </div>
-        </div>
+      {/* Top row: ID + status */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+        <span style={{ fontFamily: "JetBrains Mono", fontSize: 11, fontWeight: 700, color: "#dc2626" }}>{cargo.id}</span>
         {cargo.status === "live"
-          ? <span style={{ display: "flex", alignItems: "center", gap: 5, color: "#dc2626", fontFamily: "Rajdhani", fontWeight: 700, fontSize: 12 }}>
-              <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#dc2626", boxShadow: "0 0 8px #dc2626", animation: "pulse 1.5s infinite", display: "inline-block" }} />LIVE
+          ? <span style={{ display: "flex", alignItems: "center", gap: 5, color: "#dc2626", fontFamily: "Rajdhani", fontWeight: 700, fontSize: 11 }}>
+              <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#dc2626", animation: "pulse 1.5s infinite", display: "inline-block" }} />LIVE
             </span>
           : cargo.status === "awarded"
-          ? <span style={{ color: "#16a34a", fontFamily: "Rajdhani", fontWeight: 700, fontSize: 12 }}>✓ AWARDED</span>
-          : <span style={{ color: "#d1d5db", fontFamily: "Rajdhani", fontWeight: 600, fontSize: 12 }}>CLOSED</span>
+          ? <span style={{ color: "#16a34a", fontFamily: "Rajdhani", fontWeight: 700, fontSize: 11 }}>✓ AWARDED</span>
+          : <span style={{ color: "#9ca3af", fontFamily: "Rajdhani", fontWeight: 600, fontSize: 11 }}>CLOSED</span>
         }
       </div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <div style={{ fontFamily: "JetBrains Mono", fontSize: 11, color: "#d1d5db" }}>{cargo.weight} · {cargo.bids.length} bids</div>
-        {cargo.status === "live" && cargo.timer > 0 && (
-          <div style={{ fontFamily: "JetBrains Mono", fontSize: 11, color: cargo.timer < 60 ? "#ef4444" : "#9ca3af" }}>⏱ {formatTime(cargo.timer)}</div>
-        )}
-        {lowestBid && <div style={{ fontFamily: "JetBrains Mono", fontWeight: 700, color: "#34d399", fontSize: 13 }}>{formatINR(lowestBid)}</div>}
+
+      {/* Route */}
+      <div style={{ fontFamily: "Rajdhani", fontWeight: 700, fontSize: 15, color: "#111827", marginBottom: 3 }}>
+        {cargo.origin.split(",")[0]} → {cargo.destination.split(",")[0]}
+      </div>
+
+      {/* Cargo type */}
+      <div style={{ fontFamily: "Rajdhani", fontSize: 12, color: "#6b7280", marginBottom: 8 }}>
+        {cargo.type} · {cargo.weight}
+      </div>
+
+      {/* Bottom row: bids count + lowest bid + timer */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: 8, borderTop: "1px solid rgba(0,0,0,0.06)" }}>
+        <div style={{ fontFamily: "JetBrains Mono", fontSize: 10, color: "#9ca3af" }}>
+          {cargo.bids.length} bid{cargo.bids.length !== 1 ? "s" : ""}
+          {lowestBid && <span style={{ color: "#16a34a", fontWeight: 700 }}> · {formatINR(lowestBid)}</span>}
+        </div>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          {cargo.status === "live" && cargo.timer > 0 && (
+            <span style={{ fontFamily: "JetBrains Mono", fontSize: 10, color: cargo.timer < 60 ? "#ef4444" : "#9ca3af" }}>⏱ {formatTime(cargo.timer)}</span>
+          )}
+          {savings > 0 && cargo.status !== "live" && (
+            <span style={{ fontFamily: "JetBrains Mono", fontSize: 10, color: "#16a34a" }}>saved {formatINR(savings)}</span>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -807,9 +825,9 @@ function CargoCard({ cargo, onSelect, selected }) {
 
 export default function App() {
   const [cargos, setCargos] = useState(INITIAL_CARGOS);
-  const [selectedId, setSelectedId] = useState("RNT-001");
+  const [selectedId, setSelectedId] = useState(null);
   const [view, setView] = useState("shipper");
-  const [activeTab, setActiveTab] = useState("bids"); // bids | chart | map
+  const [activeTab, setActiveTab] = useState("cargo");
   const [bidAmount, setBidAmount] = useState("");
   const [selectedCarrier, setSelectedCarrier] = useState(ALL_CARRIERS[0]);
   const [toast, setToast] = useState(null);
@@ -819,11 +837,17 @@ export default function App() {
   const [showNotifs, setShowNotifs] = useState(false);
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
-  const [awardConfirm, setAwardConfirm] = useState(null); // { bid, cargo }
+  const [awardConfirm, setAwardConfirm] = useState(null);
   const [shipmentViewId, setShipmentViewId] = useState(null);
 
   const selected = cargos.find(c => c.id === selectedId);
   const unread = notifs.filter(n => !n.read).length;
+
+  const selectCargo = (id) => {
+    setSelectedId(id);
+    setActiveTab("cargo"); // always land on cargo details first
+    setShipmentViewId(null);
+  };
 
   const confirmAward = () => {
     const { bid, cargo } = awardConfirm;
@@ -1008,7 +1032,7 @@ export default function App() {
               {filteredCargos.length === 0 ? (
                 <div style={{ textAlign: "center", padding: "40px 0", color: "#e5e7eb", fontFamily: "Rajdhani" }}>No loads found</div>
               ) : (
-                filteredCargos.map(c => <CargoCard key={c.id} cargo={c} onSelect={setSelectedId} selected={selectedId === c.id} />)
+                filteredCargos.map(c => <CargoCard key={c.id} cargo={c} onSelect={selectCargo} selected={selectedId === c.id} />)
               )}
             </div>
           </div>
@@ -1017,12 +1041,40 @@ export default function App() {
           {shipmentViewId && cargos.find(c => c.id === shipmentViewId) ? (
             <ShipmentView
               cargo={cargos.find(c => c.id === shipmentViewId)}
-              onBack={() => { setShipmentViewId(null); setSelectedId(shipmentViewId); }}
+              onBack={() => { setShipmentViewId(null); selectCargo(shipmentViewId); }}
             />
           ) : (
-          <div style={{ flex: 1, overflowY: "auto", padding: "24px 28px" }}>
-            {selected && (
-              <div style={{ animation: "fadeIn 0.3s ease" }}>
+          <div style={{ flex: 1, overflowY: "auto", padding: "24px 28px", background: "#f9fafb" }}>
+            {!selected ? (
+              /* ── EMPTY STATE ── */
+              <div style={{ height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "60px 40px", textAlign: "center", animation: "fadeIn 0.3s ease" }}>
+                <div style={{ width: 72, height: 72, borderRadius: 20, background: "#fee2e2", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 32, marginBottom: 20 }}>📦</div>
+                <div style={{ fontFamily: "Syne", fontWeight: 800, fontSize: 22, color: "#111827", marginBottom: 8 }}>Select a cargo</div>
+                <div style={{ fontFamily: "Rajdhani", fontSize: 15, color: "#9ca3af", maxWidth: 300, lineHeight: 1.6, marginBottom: 28 }}>
+                  Choose a cargo from the list on the left to view its details, specifications, and bids.
+                </div>
+                {/* Quick stats */}
+                <div style={{ display: "flex", gap: 16 }}>
+                  {[
+                    { label: "Total Cargos", val: cargos.length, color: "#374151" },
+                    { label: "Live Now", val: cargos.filter(c => c.status === "live").length, color: "#dc2626" },
+                    { label: "Total Bids", val: cargos.reduce((s, c) => s + c.bids.length, 0), color: "#2563eb" },
+                    { label: "Awarded", val: cargos.filter(c => c.status === "awarded").length, color: "#16a34a" },
+                  ].map(({ label, val, color }) => (
+                    <div key={label} style={{ background: "#fff", border: "1px solid rgba(0,0,0,0.08)", borderRadius: 12, padding: "14px 20px", textAlign: "center" }}>
+                      <div style={{ fontFamily: "JetBrains Mono", fontWeight: 700, fontSize: 26, color }}>{val}</div>
+                      <div style={{ fontFamily: "Rajdhani", fontSize: 11, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.08em", marginTop: 4 }}>{label}</div>
+                    </div>
+                  ))}
+                </div>
+                {view === "shipper" && (
+                  <button onClick={() => setShowPostModal(true)} style={{ marginTop: 28, padding: "12px 28px", borderRadius: 10, border: "none", cursor: "pointer", background: "linear-gradient(135deg, #dc2626, #b91c1c)", color: "#fff", fontFamily: "Syne", fontWeight: 800, fontSize: 15 }}>
+                    + Post New Cargo
+                  </button>
+                )}
+              </div>
+            ) : (
+            <div style={{ animation: "fadeIn 0.3s ease" }}>
                 {/* Cargo header card */}
                 <div style={{ background: "rgba(0,0,0,0.04)", border: "1px solid rgba(0,0,0,0.08)", borderRadius: 16, padding: "22px 26px", marginBottom: 20 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 12 }}>
